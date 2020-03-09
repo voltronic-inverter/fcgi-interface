@@ -8,7 +8,6 @@
 
   #include "voltronic_dev.h"
 
-
   typedef int (*voltronic_dev_read_f)(
       void* impl_ptr,
       char* buffer,
