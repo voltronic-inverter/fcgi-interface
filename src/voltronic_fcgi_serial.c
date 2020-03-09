@@ -1,9 +1,9 @@
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 #include "voltronic_fcgi.h"
 #include "voltronic_dev_serial.h"
+#include "fcgi_stdio.h"
 
 voltronic_dev_t new_voltronic_dev(void) {
   const char* port_name = getenv("SERIAL_PORT_NAME");
@@ -29,14 +29,12 @@ voltronic_dev_t new_voltronic_dev(void) {
         "\r\n"
         "Could not open serial connection to '%s'%s%s",
         port_name, errno_prefix, errno_str);
-
-      return 0;
     }
   } else {
     printf("Status: 500 Internal Server Error\r\n"
       "\r\n"
       "SERIAL_PORT_NAME fastcgi parameter not specified");
-
-    return 0;
   }
+
+  return 0;
 }

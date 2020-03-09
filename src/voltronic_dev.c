@@ -166,7 +166,7 @@ static int voltronic_read_data_loop(
 
     elapsed = get_millisecond_timestamp() - start_time;
     if (elapsed >= timeout_milliseconds) {
-      SET_ERRNO(ETIME);
+      SET_ERRNO(ETIMEDOUT);
 
       return -1;
     }
