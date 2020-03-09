@@ -50,7 +50,10 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
-voltroniclib
+voltronic_fcgi_serial
+voltronic_fcgi_usb
+voltronic_fcgi_hidraw
+voltronic_fcgi_libusb
 lib/libserialport/*
 lib/libhidapi/*
 lib/libfcgi2/*

@@ -1,5 +1,5 @@
-## libvoltronic
-Library to interface with [Voltronic](http://voltronicpower.com) devices like the Axpert &amp; InfiniSolar
+## voltronic-inverter/fcgi-interface
+FCGI implementation to interface with [Voltronic](http://voltronicpower.com) devices like the Axpert &amp; InfiniSolar
 
 ## License
 This entire library is licenced under GNU GENERAL PUBLIC LICENSE v3
@@ -14,116 +14,61 @@ Devices from Voltronic are shipped with 4 possible hardware interfaces: RS232, U
 All the interfaces share the same underlying communication protocol
 
 ## Usage
+This library can be used with any fast cgi capable web server
 
-```c
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
+Testing was conducted using nginx.
 
-int main() {
-  voltronic_dev_t dev = // See examples for Serial & USB below
+Steps to use:
 
-  // Query the device
-  char buffer[128];
-  int result = voltronic_dev_execute(dev, command, strlen(command), buffer, sizeof(buffer), 1000);
-  if (result > 0) {
-    printf("Success on command %s, got %s\n", command, buffer);
-  } else {
-    printf("Failed to execute %s\n", command);
-  }
+### Install nginx
+- It is recommened you google this step.  There are a LOT of tutorials available online for every conceivable configuration.
 
-  // Close the connection to the device
-  voltronic_dev_close(dev);
+### Configure nginx for serial port
+
+**Edit nginx.conf**
+```conf
+location /axpert/command {
+  fastcgi_pass   127.0.0.1:9000;
+  fastcgi_param  SERIAL_PORT_NAME    "/dev/tty.usbserial";
+  fastcgi_param  REQUEST_METHOD      $request_method;
+  fastcgi_param  CONTENT_LENGTH      $content_length;
+
+  add_header Cache-Control no-cache always;
+  add_header Content-Type "text/plain; charset=UTF-8" always;
 }
 ```
 
-### Serial
-```c
-#include "voltronic_dev_serial.h"
+### Configure nginx for usb
 
-int main() {
-  // Create a serial port dev
-  voltronic_dev_t dev = voltronic_serial_create(
-    "/dev/tty.usbserial", 2400, DATA_BITS_EIGHT, STOP_BITS_ONE, SERIAL_PARITY_NONE);
+**Edit nginx.conf**
+```conf
+location /axpert/command {
+  fastcgi_pass   127.0.0.1:9000;
+  #fastcgi_param  USB_SERIAL_NUMBER   "<some serial number here>";  # optional
+  fastcgi_param  REQUEST_METHOD      $request_method;
+  fastcgi_param  CONTENT_LENGTH      $content_length;
 
-  if (dev == 0) {
-    printf("Could not open serial port device\n");
-    return 1;
-  }
-
-  // See usage example above
+  add_header Cache-Control no-cache always;
+  add_header Content-Type "text/plain; charset=UTF-8" always;
 }
 ```
 
-### USB
-```c
-#include "voltronic_dev_usb.h"
+### Start fcgi2 process
+You first need to build the binary of your choice as directed below
 
-int main() {
-  // Create a USB dev
-  const char* serial_number = 0; // Optional
-  voltronic_dev_t dev = voltronic_usb_create(0x0665, 0x5161, serial_number);
+ie. for serial port, you would run `make serial`
+This produces an executable `voltronic_fcgi_serial`
 
-  if (dev == 0) {
-    printf("Could not open USB device with serial number %s\n", serial_number);
-    return 1;
-  }
-
-  // See usage example above
-}
+```sh
+spawn-fcgi -p 9000 -n voltronic_fcgi_serial
 ```
 
-## Communication protocol
-The communication protocol consists of the following format:
+### Test
+Send a query to your nginx:
 
-**Overall the protocol has the following format:**
+`curl -X POST -d 'QPI' 'http://127.0.0.1:8080//axpert/command'`
 
-`{bytes}{CRC16}{end of input character}`
-- **bytes** the actual bytes being sent to the device, generally speaking this is the *"command"*
-- **CRC16** common CRC protocol with many implementations online
-- **end of input character** character signaling the end of input
-
-### Reserved characters
-These characters are reserved
-- `\r` (*0x0d*) End of input character
-- `(` (*0x28*) Seems to indicate start of input
-- `\n` (*0x0a*) No material importance but still reserved
-
-### Bytes
-The bytes being sent to the device appear to be simply ASCII in the form of a command
-
-Multiple documents exist listing possible commands
- - [Axpert](https://s3-eu-west-1.amazonaws.com/osor62gd45llv5fcg47yijafsz6dcrjn/HS_MS_MSX_RS232_Protocol_20140822_after_current_upgrade.pdf)
- - [Infini Solar](https://s3-eu-west-1.amazonaws.com/osor62gd45llv5fcg47yijafsz6dcrjn/Infini_RS232_Protocol.pdf)
-
-### CRC
-The CRC is used is the [CRC16 XMODEM](https://pycrc.org/models.html#xmodem) variation
-
-**Background**
-
-Multiple methods exist to [generate CRC](https://en.wikipedia.org/wiki/Computation_of_cyclic_redundancy_checks).
-
-CRC16 as the name implies contains 16 bits or 2 bytes of data.
-It is commonly written as hexadecimal for readability reason, ie> `0x17AD`
-
-Two hexadecimal character represent a single byte so given the example above.
-`0x` part simply indicates hexadecimal
-`0x17` is the first byte
-`0xAD` is the second byte
-
-**Exception**
-
-The **Reserved characters** are not allowed in the CRC.
-It appears the device simply expects them to be incremented by 1
-
-So `0x28` becomes `0x29`, `0x0d` becomes `0x0e`, etc.
-
-### End of input character
-The `\r` character signals to the device end of input
-
-Regardless of what the device received up to that point `\r` signals to the device end of current input
-
-Once this character is received all input up to that point is taken as the *command* to the device
+This will either produce an error message our the output
 
 ## Input methods
 Devices from Voltronic are shipped with 4 possible hardware interfaces: RS232, USB, Bluetooth & RS485
@@ -195,29 +140,11 @@ Newer generation [Axpert devices](http://voltronicpower.com/en-US/Product/Detail
 
 No testing has been completed on these devices but there is no reason to believe the underlying protocol has changed at all
 
-## What does this library provide?
-- Cross OS support
-- Support for RS232, USB & Bluetooth (Perhaps RS485)
-- CRC calculation written in C
-- Common interface for all device communication methods
-
-## What does this library NOT provide?
-Specific commands as given above (as examples). ie `QPI`, etc.
-
-The aim of this library is to act as a *driver* that allows interfacing with Voltronic devices through a simple API.
-What a command does, and how the data the device returns should be parsed, is a higher level concern.
-
-Much of the community is able to easily understand the commands, how to parse them and their effect.
-The biggest barier to this author appears to be how to actually communicate with the device.
-
-The communication concern requires a fair amount of knowledge of CRC, how to work with bytes and operating system API understanding ie> [termios](http://man7.org/linux/man-pages/man3/termios.3.html), [DCB](https://docs.microsoft.com/en-us/windows/desktop/api/winbase/ns-winbase-_dcb), tc.
-
-Especially USB & USB HID is complex and has significantly complex APIs that are different across EVERY operating system. Meaning Windows, Linux, OSX and \*BSD (excl. OSX) all implement different APIs to communicate with HID devices. Even using a library like HIDAPI requires understanding the underlying fundamentals
-
 ## Dependencies
 To remove a lot of the heavy lifting, the library relies:
 - [libserialport](https://sigrok.org/wiki/Libserialport)
 - [HIDAPI](https://github.com/signal11/hidapi)
+- [fgci2](https://github.com/FastCGI-Archives/fcgi2)
 
 ## Building
 
@@ -228,7 +155,18 @@ Each operating system will have a different list of prerequisites before the dep
 
 See a more detailed list below 
 
-**Build libserialport:**
+
+**Build libfcgi:**
+```sh
+git clone https://github.com/FastCGI-Archives/fcgi2.git lib/libfcgi2/
+cd lib/libfcgi2/
+./autogen.sh
+./configure
+make
+make install # Requires sudo or su
+```
+
+**If you intend on using serial port; Build libserialport:**
 ```sh
 git clone git://sigrok.org/libserialport lib/libserialport/
 cd lib/libserialport/
@@ -238,7 +176,7 @@ make
 make install # Requires sudo or run as su
 ```
 
-**Build libhidapi:**
+**If you intend on using USB; Build libhidapi:**
 ```sh
 git clone https://github.com/signal11/hidapi.git lib/libhidapi/
 cd lib/libhidapi/
