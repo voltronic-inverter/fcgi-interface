@@ -66,9 +66,10 @@ spawn-fcgi -p 9000 -n voltronic_fcgi_serial
 ### Test
 Send a query to your nginx:
 
-`curl -X POST -d 'QPI' 'http://127.0.0.1:8080//axpert/command'`
+`curl -X PUT -d 'QPI' 'http://127.0.0.1:8080/axpert/command'`
 
-This will either produce an error message our the output
+This will either produce an error message or for example like `(PI30`
+Errors are distinguished by the HTTP code (400, 500, ...)
 
 ## Input methods
 Devices from Voltronic are shipped with 4 possible hardware interfaces: RS232, USB, Bluetooth & RS485
