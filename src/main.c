@@ -5,7 +5,7 @@
 #include "fcgi_stdio.h"
 #include "voltronic_fcgi.h"
 
-static void voltronic_fcgi_loop();
+static void voltronic_fcgi_loop(void);
 
 #define READ_BUFFER_SIZE   1024
 #define WRITE_BUFFER_SIZE  2048
@@ -53,9 +53,9 @@ static int fcgi_main(const char* request_method) {
   return 0;
 }
 
-static int ensure_dev_inititialized();
-static size_t read_request_data();
-static void voltronic_dev_clear();
+static int ensure_dev_inititialized(void);
+static size_t read_request_data(void);
+static void voltronic_dev_clear(void);
 
 static void voltronic_fcgi_loop() {
   if (ensure_dev_inititialized()) {
