@@ -9,7 +9,7 @@
 #define TIMEOUT_PARAM_NAME "timeout_milliseconds"
 #define READ_BUFFER_SIZE   1024
 #define WRITE_BUFFER_SIZE  2048
-#define TIMEOUT_FLUSH_COMMAND "QPI\xBE\xAC\r"
+#define TIMEOUT_FLUSH_COMMAND "\r\r"
 
 static char read_buffer[READ_BUFFER_SIZE + 8];
 static char write_buffer[WRITE_BUFFER_SIZE + 8];
@@ -19,45 +19,37 @@ static voltronic_dev_t dev = 0;
 static size_t request_length = 0;
 static unsigned int timeout_milliseconds = 0;
 
-static unsigned int errorCount = 0;
-static unsigned int clearBufferFlag = 0;
-
 static unsigned int fast_parse_int(const char* cstring);
 static unsigned int parse_timeout(const char* query_string);
 static void clear_buffers(void);
-static void flush_dev(void);
 static int initialize_dev(void);
 static int fill_read_buffer(void);
-static void execute_request(void);
+static int execute_request(void);
 
 #define TIMEOUT_PARAM_LENGTH (sizeof(TIMEOUT_PARAM_NAME) - 1)
 #define TIMEOUT_FLUSH_COMMAND_LENGTH (sizeof(TIMEOUT_FLUSH_COMMAND) - 1)
-#define MAXIMUM_DEV_FAILURES 3
-#define DEV_FLUSH_TIMEOUT 100
-#define DEV_FLUSH_ITERATIONS 512
 
 int voltronic_fcgi(const char* content_length, const char* query_string) {
-  request_length = fast_parse_int(content_length);;
+  request_length = fast_parse_int(content_length);
   timeout_milliseconds = parse_timeout(query_string);
 
   if (request_length > 0 && timeout_milliseconds > 0) {
-    if (initialize_dev() && fill_read_buffer()) {
-      execute_request();
+    if (initialize_dev()) {
+      if (fill_read_buffer()) {
+        return execute_request();
+      }
+    } else {
+      return 0;
     }
   } else {
     printf("Status: 400 Bad Request\r\n"
       "\r\n");
   }
 
-  clear_buffers();
-  return errorCount > MAXIMUM_DEV_FAILURES ? 0 : 1;
+  return 1;
 }
 
-static void execute_request(void) {
-  if (clearBufferFlag) {
-    flush_dev();
-  }
-
+static int execute_request(void) {
   const int bytes_read = voltronic_dev_execute(
     dev,
     read_buffer,
@@ -67,46 +59,26 @@ static void execute_request(void) {
     timeout_milliseconds);
 
   if (bytes_read > 0) {
-    if (!clearBufferFlag) {
-      errorCount = 0;
-    }
-
-    clearBufferFlag = 0;
     write_buffer[bytes_read] = 0;
 
     printf("Status: 200 OK\r\n"
       "\r\n"
       "%s", write_buffer);
-  } else {
-    clearBufferFlag = 1;
-    ++errorCount;
 
+    return 1;
+  } else {
     const char* errno_str = "";
     if (errno > 0) {
       errno_str = strerror(errno);
-      if (errno == ETIMEDOUT) {
-        voltronic_dev_write(dev, TIMEOUT_FLUSH_COMMAND, TIMEOUT_FLUSH_COMMAND_LENGTH);
-      }
     }
 
     printf("Status: 503 Service Unavailable\r\n"
       "\r\n"
       "%s", errno_str);
-  }
-}
 
-static void flush_dev(void) {
-  // Clear anything stuck in the buffer
-  for (unsigned int count = 0; count < DEV_FLUSH_ITERATIONS; ++count) {
-    const int result = voltronic_dev_read(
-      dev,
-      read_buffer,
-      READ_BUFFER_SIZE,
-      DEV_FLUSH_TIMEOUT);
+    voltronic_dev_write(dev, TIMEOUT_FLUSH_COMMAND, TIMEOUT_FLUSH_COMMAND_LENGTH);
 
-    if (result <= 0) {
-      break;
-    }
+    return 0;
   }
 }
 
@@ -141,10 +113,8 @@ static int initialize_dev(void) {
     dev = new_voltronic_dev();
     if (dev != 0) {
       atexit(close_dev);
-      errorCount = 0;
       return 1;
     } else {
-      ++errorCount;
       return 0;
     }
   }
