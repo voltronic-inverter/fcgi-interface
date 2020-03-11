@@ -9,6 +9,7 @@
 #define TIMEOUT_PARAM_NAME "timeout_milliseconds"
 #define READ_BUFFER_SIZE   1024
 #define WRITE_BUFFER_SIZE  2048
+#define TIMEOUT_FLUSH_COMMAND "QPI\xBE\xAC\r"
 
 static char read_buffer[READ_BUFFER_SIZE + 8];
 static char write_buffer[WRITE_BUFFER_SIZE + 8];
@@ -30,6 +31,7 @@ static int fill_read_buffer(void);
 static void execute_request(void);
 
 #define TIMEOUT_PARAM_LENGTH (sizeof(TIMEOUT_PARAM_NAME) - 1)
+#define TIMEOUT_FLUSH_COMMAND_LENGTH (sizeof(TIMEOUT_FLUSH_COMMAND) - 1)
 #define MAXIMUM_DEV_FAILURES 3
 #define DEV_FLUSH_TIMEOUT 100
 #define DEV_FLUSH_ITERATIONS 512
@@ -82,6 +84,9 @@ static void execute_request(void) {
     const char* errno_str = "";
     if (errno > 0) {
       errno_str = strerror(errno);
+      if (errno == ETIME) {
+        voltronic_dev_write(dev, TIMEOUT_FLUSH_COMMAND, TIMEOUT_FLUSH_COMMAND_LENGTH);
+      }
     }
 
     printf("Status: 503 Service Unavailable\r\n"
@@ -92,22 +97,6 @@ static void execute_request(void) {
 
 static void flush_dev(void) {
   // Clear anything stuck in the buffer
-  for (unsigned int count = 0; count < DEV_FLUSH_ITERATIONS; ++count) {
-    const int result = voltronic_dev_read(
-      dev,
-      read_buffer,
-      READ_BUFFER_SIZE,
-      DEV_FLUSH_TIMEOUT);
-
-    if (result <= 0) {
-      break;
-    }
-  }
-
-  // Write end of input character
-  voltronic_dev_write(dev, "\r", sizeof(char));
-
-  // Flush some more
   for (unsigned int count = 0; count < DEV_FLUSH_ITERATIONS; ++count) {
     const int result = voltronic_dev_read(
       dev,
