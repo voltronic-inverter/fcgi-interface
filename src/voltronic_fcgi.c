@@ -25,7 +25,7 @@ static unsigned int fast_parse_int(const char* cstring);
 static unsigned int parse_timeout(const char* query_string);
 static void clear_buffers(void);
 static void flush_dev(void);
-static int initialize_dev();
+static int initialize_dev(void);
 static int fill_read_buffer(void);
 static void execute_request(void);
 
