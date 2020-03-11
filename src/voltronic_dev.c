@@ -307,7 +307,7 @@ int voltronic_dev_execute(
         receive_buffer_length,
         timeout_milliseconds - elapsed);
     } else {
-      SET_ERRNO(ETIME);
+      SET_ERRNO(ETIMEDOUT);
 
       return -1;
     }

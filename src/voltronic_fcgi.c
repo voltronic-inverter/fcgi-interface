@@ -84,7 +84,7 @@ static void execute_request(void) {
     const char* errno_str = "";
     if (errno > 0) {
       errno_str = strerror(errno);
-      if (errno == ETIME) {
+      if (errno == ETIMEDOUT) {
         voltronic_dev_write(dev, TIMEOUT_FLUSH_COMMAND, TIMEOUT_FLUSH_COMMAND_LENGTH);
       }
     }
