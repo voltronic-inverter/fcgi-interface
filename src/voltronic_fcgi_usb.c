@@ -5,7 +5,7 @@
 #include "voltronic_dev_usb.h"
 #include "fcgi_stdio.h"
 
-voltronic_dev_t new_voltronic_dev() {
+voltronic_dev_t new_voltronic_dev(void) {
   const char* serial_number = getenv("USB_SERIAL_NUMBER");
 
   const voltronic_dev_t dev = voltronic_usb_create(
@@ -19,7 +19,7 @@ voltronic_dev_t new_voltronic_dev() {
     const char* serial_prefix = "";
     const char* serial_number_str = "";
     if (serial_number != 0) {
-      serial_prefix = " and serial_number=";
+      serial_prefix = ", serial_number=";
       serial_number_str = serial_number;
     }
 

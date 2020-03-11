@@ -126,11 +126,11 @@ static inline size_t voltronic_usb_wchar_size(
   return wide_chars;
 }
 
-static inline void voltronic_usb_exit_hidapi() {
+static inline void voltronic_usb_exit_hidapi(void) {
   hid_exit();
 }
 
-static inline void voltronic_usb_init_hidapi() {
+static inline void voltronic_usb_init_hidapi(void) {
   #if defined(_WIN32) || defined(WIN32)
     static unsigned __int8 hidapi_init_complete = 0;
   #else

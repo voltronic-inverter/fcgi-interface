@@ -21,7 +21,7 @@ SHARED_LIBS = -lfcgi
 SRCS = $(wildcard $(SDIR)/*.c)
 
 # Object files shared by all directives
-SHARED_OBJS = $(ODIR)/main.o $(ODIR)/time_util.o $(ODIR)/voltronic_crc.o $(ODIR)/voltronic_dev.o 
+SHARED_OBJS = $(ODIR)/main.o $(ODIR)/time_util.o $(ODIR)/voltronic_crc.o $(ODIR)/voltronic_dev.o  $(ODIR)/voltronic_fcgi.o
 
 # Directives
 default:
