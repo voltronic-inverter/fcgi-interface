@@ -96,8 +96,7 @@ static inline int voltronic_dev_usb_write(
     const size_t buffer_size) {
 
   const int write_size = GET_REPORT_SIZE(buffer_size);
-  unsigned char write_buffer[HID_REPORT_SIZE + 1];
-  memset(write_buffer, 0, HID_REPORT_SIZE + 1);
+  unsigned char write_buffer[HID_REPORT_SIZE + 1] = {0};
   memcpy(&write_buffer[1], buffer, write_size);
 
   const int bytes_written = hid_write(
