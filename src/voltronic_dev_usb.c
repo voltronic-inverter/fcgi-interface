@@ -13,8 +13,8 @@
 
 #define VOLTRONIC_DEV_USB(_impl_ptr_) ((hid_device*) (_impl_ptr_))
 #define HID_REPORT_SIZE 8
-#define GET_REPORT_SIZE(__wanted__) \
-  ((__wanted__ > HID_REPORT_SIZE) ? HID_REPORT_SIZE : __wanted__)
+#define GET_REPORT_SIZE(_val_) \
+  ((_val_ > HID_REPORT_SIZE) ? HID_REPORT_SIZE : _val_)
 
 static int voltronic_dev_usb_read(
   void* impl_ptr,
@@ -93,35 +93,19 @@ static inline int voltronic_dev_usb_read(
 static inline int voltronic_dev_usb_write(
     void* impl_ptr,
     const char* buffer,
-    size_t buffer_size) {
+    const size_t buffer_size) {
 
+  const int write_size = GET_REPORT_SIZE(buffer_size);
   unsigned char write_buffer[HID_REPORT_SIZE + 1];
-  unsigned int total_bytes = 0;
-  while(buffer_size != 0) {
-    memset(write_buffer, 0, HID_REPORT_SIZE + 1);
-    const int write_size = GET_REPORT_SIZE(buffer_size);
+  memset(write_buffer, 0, HID_REPORT_SIZE + 1);
+  memcpy(&write_buffer[1], buffer, write_size);
 
-    memcpy(&write_buffer[1], buffer, write_size);
-
-    int bytes_written = hid_write(
+  const int bytes_written = hid_write(
       VOLTRONIC_DEV_USB(impl_ptr),
       write_buffer,
       HID_REPORT_SIZE + 1);
 
-    if (bytes_written > 0) {
-      if (bytes_written > write_size) {
-        bytes_written = write_size;
-      }
-
-      buffer_size -= bytes_written;
-      buffer += bytes_written;
-      total_bytes += bytes_written;
-    } else {
-      return -1;
-    }
-  }
-
-  return total_bytes;
+  return GET_REPORT_SIZE(bytes_written);
 }
 
 static int voltronic_dev_usb_close(void* impl_ptr) {
