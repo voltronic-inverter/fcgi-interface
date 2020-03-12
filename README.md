@@ -27,11 +27,12 @@ Steps to use:
 
 **Edit nginx.conf**
 ```conf
-location /axpert/command {
+location /voltronic/serial {
   fastcgi_pass   127.0.0.1:9000;
   fastcgi_param  SERIAL_PORT_NAME    "/dev/tty.usbserial";
   fastcgi_param  REQUEST_METHOD      $request_method;
   fastcgi_param  CONTENT_LENGTH      $content_length;
+  fastcgi_param  QUERY_STRING        $query_string;
 
   add_header Cache-Control no-cache always;
   add_header Content-Type "text/plain; charset=UTF-8" always;
@@ -42,11 +43,12 @@ location /axpert/command {
 
 **Edit nginx.conf**
 ```conf
-location /axpert/command {
+location /voltronic/usb {
   fastcgi_pass   127.0.0.1:9000;
   #fastcgi_param  USB_SERIAL_NUMBER   "<some serial number here>";  # optional
   fastcgi_param  REQUEST_METHOD      $request_method;
   fastcgi_param  CONTENT_LENGTH      $content_length;
+  fastcgi_param  QUERY_STRING        $query_string;
 
   add_header Cache-Control no-cache always;
   add_header Content-Type "text/plain; charset=UTF-8" always;
@@ -66,10 +68,14 @@ spawn-fcgi -p 9000 -n voltronic_fcgi_serial
 ### Test
 Send a query to your nginx:
 
-`curl -X PUT -d 'QPI' 'http://127.0.0.1:8080/axpert/command'`
+**Basic command:**
+`curl -X POST -d 'QPI' 'http://127.0.0.1:8080/voltronic/usb`
 
 This will either produce an error message or for example like `(PI30`
 Errors are distinguished by the HTTP code (400, 500, ...)
+
+**Variable timeout:**
+`curl -X POST -d 'QPIGS' 'http://127.0.0.1:8080/voltronic/usb?timeout_milliseconds=2000`
 
 ## Input methods
 Devices from Voltronic are shipped with 4 possible hardware interfaces: RS232, USB, Bluetooth & RS485
@@ -159,8 +165,9 @@ See a more detailed list below
 
 **Build libfcgi:**
 ```sh
-git clone https://github.com/FastCGI-Archives/fcgi2.git lib/libfcgi2/
-cd lib/libfcgi2/
+cd lib
+./pull_libfcgi2.sh
+cd libfcgi2
 ./autogen.sh
 ./configure
 make
@@ -169,8 +176,9 @@ make install # Requires sudo or su
 
 **If you intend on using serial port; Build libserialport:**
 ```sh
-git clone git://sigrok.org/libserialport lib/libserialport/
-cd lib/libserialport/
+cd lib
+./pull_libserialport.sh
+cd libserialport
 ./autogen.sh
 ./configure
 make
@@ -179,8 +187,9 @@ make install # Requires sudo or run as su
 
 **If you intend on using USB; Build libhidapi:**
 ```sh
-git clone https://github.com/signal11/hidapi.git lib/libhidapi/
-cd lib/libhidapi/
+cd lib
+./pull_libhidapi.sh
+cd libhidapi
 ./bootstrap
 ./configure
 make
@@ -214,6 +223,13 @@ sudo apt-get install gcc git autoconf automake libtool pkg-config libudev-dev li
 ```sh
 sudo yum clean all
 sudo yum install gcc git autoconf automake libtool pkg-config libudev-devel libusb1-devel
+```
+
+**Raspbian:**
+```sh
+sudo apt-get clean
+sudo apt-get update
+sudo apt-get install gcc git autoconf automake libtool pkg-config libudev-dev libusb-1.0-0-dev
 ```
 
 **make** to build
