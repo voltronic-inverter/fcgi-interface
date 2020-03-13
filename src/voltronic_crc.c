@@ -30,33 +30,33 @@ voltronic_crc_t read_voltronic_crc(
     const char* _buffer,
     const size_t buffer_length) {
 
+  voltronic_crc_t crc = 0;
   if (IS_TYPE_COMPATIBLE() && buffer_length >= sizeof(voltronic_crc_t)) {
     const unsigned char* buffer = (const unsigned char*) _buffer;
 
-    voltronic_crc_t crc = 0;
     crc |= buffer[0];
     crc = (crc << 8);
     crc |= buffer[1];
-
-    return crc;
-  } else {
-    return 0;
   }
+
+  return crc;
 }
 
 voltronic_crc_t calculate_voltronic_crc(
     const char* _buffer,
     size_t buffer_length) {
 
-  static const voltronic_crc_t crc_table[16] = {
+  voltronic_crc_t crc = 0;
+
+  if (IS_TYPE_COMPATIBLE() && buffer_length > 0) {
+
+    static const voltronic_crc_t crc_table[16] = {
       0x0000, 0x1021, 0x2042, 0x3063,
       0x4084, 0x50A5, 0x60C6, 0x70E7,
       0x8108, 0x9129, 0xA14A, 0xB16B,
       0xC18C, 0xD1AD, 0xE1CE, 0xF1EF
-  };
+    };
 
-  voltronic_crc_t crc = 0;
-  if (IS_TYPE_COMPATIBLE() && buffer_length > 0) {
     const unsigned char* buffer = (const unsigned char*) _buffer;
     unsigned char byte;
     do {
