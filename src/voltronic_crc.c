@@ -9,16 +9,19 @@
 #define IS_TYPE_COMPATIBLE() \
   (sizeof(unsigned char) == 1)
 
+#define CRC_SIZE \
+  (sizeof(voltronic_crc_t))
+
 int write_voltronic_crc(
     const voltronic_crc_t crc,
     char* _buffer,
     const size_t buffer_length) {
 
-  if (IS_TYPE_COMPATIBLE() && buffer_length >= sizeof(voltronic_crc_t)) {
+  if (IS_TYPE_COMPATIBLE() && buffer_length >= CRC_SIZE) {
     unsigned char* buffer = (unsigned char*) _buffer;
 
     buffer[0] = crc;
-    buffer[1] = (crc >> 8);
+    buffer[1] = crc >> 8;
 
     return 1;
   } else {
@@ -31,11 +34,11 @@ voltronic_crc_t read_voltronic_crc(
     const size_t buffer_length) {
 
   voltronic_crc_t crc = 0;
-  if (IS_TYPE_COMPATIBLE() && buffer_length >= sizeof(voltronic_crc_t)) {
+  if (IS_TYPE_COMPATIBLE() && buffer_length >= CRC_SIZE) {
     const unsigned char* buffer = (const unsigned char*) _buffer;
 
     crc |= buffer[0];
-    crc = (crc << 8);
+    crc = crc << 8;
     crc |= buffer[1];
   }
 
@@ -75,7 +78,7 @@ voltronic_crc_t calculate_voltronic_crc(
 
     byte = crc >> 8;
     if (IS_RESERVED_BYTE(byte)) {
-      crc += (1 << 8);
+      crc += 1 << 8;
     }
   }
 
