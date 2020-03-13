@@ -1,42 +1,42 @@
 #include "voltronic_crc.h"
 
-#define IS_SET(_ch_, _bits_) \
-  (((_ch_) & (_bits_)) == (_bits_))
+#define IS_EQUAL(_ch_a_, _ch_b_) \
+  ((_ch_a_) == (_ch_b_))
 
-#define IS_RESERVED_CHARACTER(_ch_) \
-  (IS_SET(_ch_, 0x28) || IS_SET(_ch_, 0x0d) || IS_SET(_ch_, 0x0a))
+#define IS_RESERVED_BYTE(_ch_) \
+  (IS_EQUAL(_ch_, 0x28) || IS_EQUAL(_ch_, 0x0D) || IS_EQUAL(_ch_, 0x0A))
 
-static const voltronic_crc_t xmodem_crc_table[16] = {
-    0x0000, 0x1021, 0x2042, 0x3063,
-    0x4084, 0x50a5, 0x60c6, 0x70e7,
-    0x8108, 0x9129, 0xa14a, 0xb16b,
-    0xc18c, 0xd1ad, 0xe1ce, 0xf1ef
-};
+#define IS_TYPE_COMPATIBLE() \
+  (sizeof(unsigned char) == 1)
 
-static inline int _write_voltronic_crc(
+int write_voltronic_crc(
     const voltronic_crc_t crc,
-    unsigned char* buffer,
+    char* _buffer,
     const size_t buffer_length) {
 
-  if (buffer_length >= sizeof(voltronic_crc_t)) {
-    buffer[0] = (unsigned char) crc;
-    buffer[1] = (unsigned char) (crc >> 8);
+  if (IS_TYPE_COMPATIBLE() && buffer_length >= sizeof(voltronic_crc_t)) {
+    unsigned char* buffer = (unsigned char*) _buffer;
+
+    buffer[0] = crc;
+    buffer[1] = crc >> 8;
+
     return 1;
   } else {
     return 0;
   }
 }
 
-static inline voltronic_crc_t _read_voltronic_crc(
-    const unsigned char* buffer,
+voltronic_crc_t read_voltronic_crc(
+    const char* _buffer,
     const size_t buffer_length) {
 
-  if (buffer_length >= sizeof(voltronic_crc_t)) {
-    voltronic_crc_t crc = 0;
+  if (IS_TYPE_COMPATIBLE() && buffer_length >= sizeof(voltronic_crc_t)) {
+    const unsigned char* buffer = (const unsigned char*) _buffer;
 
-    crc |= (voltronic_crc_t) buffer[0];
+    voltronic_crc_t crc = 0;
+    crc |= buffer[0];
     crc = crc << 8;
-    crc |= (voltronic_crc_t) buffer[1];
+    crc |= buffer[1];
 
     return crc;
   } else {
@@ -44,55 +44,40 @@ static inline voltronic_crc_t _read_voltronic_crc(
   }
 }
 
-static inline voltronic_crc_t _calculate_voltronic_crc(
-    const unsigned char* buffer,
+voltronic_crc_t calculate_voltronic_crc(
+    const char* _buffer,
     size_t buffer_length) {
 
+  static const voltronic_crc_t crc_table[16] = {
+      0x0000, 0x1021, 0x2042, 0x3063,
+      0x4084, 0x50A5, 0x60C6, 0x70E7,
+      0x8108, 0x9129, 0xA14A, 0xB16B,
+      0xC18C, 0xD1AD, 0xE1CE, 0xF1EF
+  };
+
   voltronic_crc_t crc = 0;
-
-  if (buffer_length > 0) {
+  if (IS_TYPE_COMPATIBLE() && buffer_length > 0) {
+    const unsigned char* buffer = (const unsigned char*) _buffer;
+    unsigned char byte;
     do {
-      const unsigned char b = *buffer;
+      byte = *buffer;
 
-      crc = xmodem_crc_table[(crc >> 12) ^ (b >> 4)] ^ (crc << 4);
-      crc = xmodem_crc_table[(crc >> 12) ^ (b & 0x0f)] ^ (crc << 4);
+      crc = crc_table[(crc >> 12) ^ (byte >> 4)] ^ (crc << 4);
+      crc = crc_table[(crc >> 12) ^ (byte & 0x0F)] ^ (crc << 4);
 
       buffer += sizeof(unsigned char);
     } while(--buffer_length);
 
-    if (IS_RESERVED_CHARACTER(crc)) {
+    byte = crc;
+    if (IS_RESERVED_BYTE(byte)) {
       crc |= 1;
     }
 
-    if (IS_RESERVED_CHARACTER(crc >> 8)) {
+    byte = crc >> 8;
+    if (IS_RESERVED_BYTE(byte)) {
       crc |= 1 << 8;
     }
   }
 
   return crc;
-}
-
-int write_voltronic_crc(
-    const voltronic_crc_t crc,
-    char* buffer,
-    const size_t buffer_length) {
-
-  return _write_voltronic_crc(
-    crc, (unsigned char*) buffer, buffer_length);
-}
-
-voltronic_crc_t read_voltronic_crc(
-    const char* buffer,
-    const size_t buffer_length) {
-
-  return _read_voltronic_crc(
-    (const unsigned char*) buffer, buffer_length);
-}
-
-voltronic_crc_t calculate_voltronic_crc(
-    const char* buffer,
-    size_t buffer_length) {
-
-  return _calculate_voltronic_crc(
-    (const unsigned char*) buffer, buffer_length);
 }
