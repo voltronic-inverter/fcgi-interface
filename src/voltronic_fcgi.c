@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include "voltronic_crc.h"
 #include "voltronic_fcgi.h"
 #include "fcgi_stdio.h"
 
@@ -108,16 +109,21 @@ static inline void close_dev(void) {
 static int initialize_dev(void) {
   if (dev != 0) {
     return 1;
-  } else {
+  } else if (is_platform_supported()) {
     clear_buffers();
     dev = new_voltronic_dev();
     if (dev != 0) {
       atexit(close_dev);
       return 1;
-    } else {
-      return 0;
     }
+  } else {
+    printf("Status: 500 Internal Server Error\r\n"
+      "\r\n"
+      "The CRC calculation is not supported on the current platform, "
+      "please contact the developer of this CGI library to fix it!");
   }
+
+  return 0;
 }
 
 static unsigned int parse_timeout(const char* query_string) {
