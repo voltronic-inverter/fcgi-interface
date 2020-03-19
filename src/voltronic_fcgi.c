@@ -61,17 +61,13 @@ static int execute_request(void) {
     timeout_milliseconds);
 
   if (bytes_read > 0) {
-    if (successful_io_operations < 0xFF) {
-      ++successful_io_operations;
-    }
-
     write_buffer[bytes_read] = 0;
 
     printf("Status: 200 OK\r\n"
       "Successful-IO-operations: %d\r\n"
       "\r\n"
       "%s",
-      successful_io_operations,
+      ++successful_io_operations,
       write_buffer);
 
     return 1;
