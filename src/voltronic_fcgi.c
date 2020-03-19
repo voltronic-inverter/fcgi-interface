@@ -19,7 +19,7 @@ static voltronic_dev_t dev = 0;
 
 static size_t request_length = 0;
 static unsigned int timeout_milliseconds = 0;
-static unsigned int success_count = 0;
+static unsigned int successful_io_operations = 0;
 
 static unsigned int fast_parse_int(const char* cstring);
 static unsigned int parse_timeout(const char* query_string);
@@ -61,8 +61,8 @@ static int execute_request(void) {
     timeout_milliseconds);
 
   if (bytes_read > 0) {
-    if (success_count < 0xFFFF) {
-      ++success_count;
+    if (successful_io_operations < 0xFF) {
+      ++successful_io_operations;
     }
 
     write_buffer[bytes_read] = 0;
@@ -70,7 +70,9 @@ static int execute_request(void) {
     printf("Status: 200 OK\r\n"
       "Successful-IO-operations: %d\r\n"
       "\r\n"
-      "%s", success_count, write_buffer);
+      "%s",
+      successful_io_operations,
+      write_buffer);
 
     return 1;
   } else {
