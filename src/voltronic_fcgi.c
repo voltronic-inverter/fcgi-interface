@@ -154,15 +154,16 @@ static unsigned int parse_timeout(const char* query_string) {
 
 static unsigned int fast_parse_int(const char* cstring) {
   unsigned int value = 0;
-  cstring -= sizeof(char);
   for(unsigned int count = 0; count < 8; ++count) {
-    cstring += sizeof(char);
     const char ch = *cstring;
+
     if (ch >= '0' && ch <= '9') {
       value = (value * 10) + (ch - '0');
     } else {
       return value;
     }
+
+    cstring += sizeof(char);
   }
 
   return 0;
