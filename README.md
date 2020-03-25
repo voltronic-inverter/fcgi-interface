@@ -29,7 +29,11 @@ Steps to use:
 ```conf
 location /voltronic/serial {
   fastcgi_pass   127.0.0.1:9000;
-  fastcgi_param  SERIAL_PORT_NAME    "/dev/tty.usbserial";
+  fastcgi_param  SERIAL_PORT_NAME         "/dev/tty.usbserial";
+  #fastcgi_param  SERIAL_PORT_BAUD_RATE    "2400";  # Optional, default: 2400
+  #fastcgi_param  SERIAL_PORT_DATA_BITS    "8";     # Optional, default: 8
+  #fastcgi_param  SERIAL_PORT_STOP_BITS    "1.5";   # Optional, default: 1
+  #fastcgi_param  SERIAL_PORT_PARITY       "odd";   # Optional, default: none
   fastcgi_param  REQUEST_METHOD      $request_method;
   fastcgi_param  CONTENT_LENGTH      $content_length;
   fastcgi_param  QUERY_STRING        $query_string;
