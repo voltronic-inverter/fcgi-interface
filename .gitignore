@@ -57,5 +57,6 @@ voltronic_fcgi_libusb
 lib/libserialport/*
 lib/libhidapi/*
 lib/libfcgi2/*
+lib/libusb/*
 obj/*
 
