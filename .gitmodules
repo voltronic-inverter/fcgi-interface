@@ -1,0 +1,12 @@
+[submodule "lib/fcgi2"]
+	path = lib/fcgi2
+	url = https://github.com/FastCGI-Archives/fcgi2.git
+[submodule "lib/hidapi"]
+	path = lib/hidapi
+	url = https://github.com/libusb/hidapi.git
+[submodule "lib/libserialport"]
+	path = lib/libserialport
+	url = git://sigrok.org/libserialport
+[submodule "lib/libusb"]
+	path = lib/libusb
+	url = https://github.com/libusb/libusb.git
