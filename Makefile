@@ -12,7 +12,7 @@ ODIR = obj
 CFLAGS = -std=c99 -Werror -Wall -Wextra -Wpedantic -Wmissing-prototypes -Wshadow -O3 -flto -fomit-frame-pointer
 
 # add includes
-CFLAGS += -I$(IDIR) -I$(LDIR)/libfcgi2/include -I$(LDIR)/libserialport -I$(LDIR)/libhidapi/hidapi
+CFLAGS += -I$(IDIR) -I$(LDIR)/fcgi2/include -I$(LDIR)/libserialport -I$(LDIR)/hidapi/hidapi
 
 # shared libraries
 SHARED_LIBS = -lfcgi
