@@ -25,30 +25,30 @@ SHARED_OBJS = $(ODIR)/main.o $(ODIR)/time_util.o $(ODIR)/voltronic_crc.o $(ODIR)
 
 # Directives
 default:
-	@echo "Different compile options exist; ie. make serial"
-	@echo "  serial - Serial port only"
-	@echo "  usb - USB support in Mac, Windows, FreeBSD"
-	@echo "  hidraw - USB support in Linux using hidraw"
-	@echo "  libusb - USB support using libUSB"
+	@echo "Different compile options exist; ie. make libserialport; make hidapi; etc."
+	@echo "  libserialport - Serial port using libserialport"
+	@echo "  hidapi - USB support using HIDApi in Mac, Windows, FreeBSD"
+	@echo "  hidapi-hidraw - USB support in Linux using HIDApi utilizing HIDRaw"
+	@echo "  hidapi-libusb - USB support using HIDApi utilizing LibUSB"
 
-serial: $(SHARED_OBJS) $(ODIR)/voltronic_dev_serial.o $(ODIR)/voltronic_fcgi_serial.o
+libserialport: $(SHARED_OBJS) $(ODIR)/voltronic_dev_serial_libserialport.o $(ODIR)/voltronic_fcgi_libserialport.o
 	$(CC) -o $@ $^ $(CFLAGS) $(SHARED_LIBS) -lserialport
-	$(CP) $@ voltronic_fcgi_serial
+	$(CP) $@ voltronic_fcgi_libserialport
 	$(RM) $@
 
-usb: $(SHARED_OBJS) $(ODIR)/voltronic_dev_usb.o $(ODIR)/voltronic_fcgi_usb.o
+hidapi: $(SHARED_OBJS) $(ODIR)/voltronic_dev_usb_hidapi.o $(ODIR)/voltronic_fcgi_hidapi.o
 	$(CC) -o $@ $^ $(CFLAGS) $(SHARED_LIBS) -lhidapi
-	$(CP) $@ voltronic_fcgi_usb
+	$(CP) $@ voltronic_fcgi_hidapi
 	$(RM) $@
 
-hidraw: $(SHARED_OBJS) $(ODIR)/voltronic_dev_usb.o $(ODIR)/voltronic_fcgi_usb.o
+hidapi-hidraw: $(SHARED_OBJS) $(ODIR)/voltronic_dev_usb_hidapi.o $(ODIR)/voltronic_fcgi_hidapi_hidraw.o
 	$(CC) -o $@ $^ $(CFLAGS) $(SHARED_LIBS) -lhidapi-hidraw
-	$(CP) $@ voltronic_fcgi_hidraw
+	$(CP) $@ voltronic_fcgi_hidapi_hidraw
 	$(RM) $@
 
-libusb: $(SHARED_OBJS) $(ODIR)/voltronic_dev_usb.o $(ODIR)/voltronic_fcgi_usb.o
+hidapi-libusb: $(SHARED_OBJS) $(ODIR)/voltronic_dev_usb_hidapi.o $(ODIR)/voltronic_fcgi_hidapi_libusb.o
 	$(CC) -o $@ $^ $(CFLAGS) $(SHARED_LIBS) -lhidapi-libusb
-	$(CP) $@ voltronic_fcgi_libusb
+	$(CP) $@ voltronic_fcgi_hidapi_libusb
 	$(RM) $@
 
 $(ODIR)/%.o: $(SDIR)/%.c $(DEPS)
@@ -57,4 +57,4 @@ $(ODIR)/%.o: $(SDIR)/%.c $(DEPS)
 .PHONY: clean
 
 clean:
-	$(RM) $(ODIR)/*.o *~ core voltronic_fcgi_serial voltronic_fcgi_usb voltronic_fcgi_hidraw voltronic_fcgi_libusb $(INCDIR)/*~ 
+	$(RM) $(ODIR)/*.o *~ core voltronic_fcgi_libserialport voltronic_fcgi_hidapi voltronic_fcgi_hidapi_hidraw voltronic_fcgi_hidapi_libusb $(INCDIR)/*~ 
