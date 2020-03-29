@@ -1,20 +1,10 @@
 [submodule "lib/fcgi2"]
 	path = lib/fcgi2
 	url = https://github.com/FastCGI-Archives/fcgi2.git
-        branch = master
-        update = merge
-[submodule "lib/hidapi"]
-	path = lib/hidapi
-	url = https://github.com/libusb/hidapi.git
-        branch = master
-        update = merge
-[submodule "lib/libserialport"]
-	path = lib/libserialport
-	url = git://sigrok.org/libserialport
-        branch = master
-        update = merge
-[submodule "lib/libusb"]
-	path = lib/libusb
-	url = https://github.com/libusb/libusb.git
-        branch = master
-        update = merge
+    branch = master
+    update = merge
+[submodule "lib/libvoltronic"]
+	path = lib/libvoltronic
+	url = https://github.com/jvandervyver/libvoltronic.git
+    branch = master
+    update = merge

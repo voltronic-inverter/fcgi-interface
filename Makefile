@@ -3,52 +3,57 @@ CC = gcc
 CP = cp -f
 
 #directories
-IDIR = include
 LDIR = lib
 SDIR = src
 ODIR = obj
+VDIR = $(LDIR)/libvoltronic
+VLDIR = $(LDIR)/libvoltronic/$(LDIR)
+VSDIR = $(LDIR)/libvoltronic/$(SDIR)
 
 # define any compile-time flags
 CFLAGS = -std=c99 -Werror -Wall -Wextra -Wpedantic -Wmissing-prototypes -Wshadow -O3 -flto -fomit-frame-pointer
 
 # add includes
-CFLAGS += -I$(IDIR) -I$(LDIR)/fcgi2/include -I$(LDIR)/libserialport -I$(LDIR)/hidapi/hidapi
+CFLAGS += -I$(VDIR)/include -I$(LDIR)/fcgi2/include -I$(VLDIR)/libserialport -I$(VLDIR)/hidapi/hidapi -I$(VLDIR)/libusb/libusb
 
 # shared libraries
 SHARED_LIBS = -lfcgi
 
 # define the C source files
-SRCS = $(wildcard $(SDIR)/*.c)
+SRCS = $(wildcard $(SDIR)/*.c) $(wildcard $(VSDIR)/*.c)
 
 # Object files shared by all directives
-SHARED_OBJS = $(ODIR)/main.o $(ODIR)/time_util.o $(ODIR)/voltronic_crc.o $(ODIR)/voltronic_dev.o  $(ODIR)/voltronic_fcgi.o
+SHARED_OBJS = $(ODIR)/main.o $(ODIR)/voltronic_crc.o $(ODIR)/voltronic_dev.o  $(ODIR)/voltronic_fcgi.o
 
 # Directives
 default:
-	@echo "Different compile options exist; ie. make libserialport; make hidapi; etc."
+	@echo "Different compile options exist using different underlying hardware and libraries to communicate with the hardware"
+	@echo ""
 	@echo "  libserialport - Serial port using libserialport"
 	@echo "  hidapi - USB support using HIDApi in Mac, Windows, FreeBSD"
 	@echo "  hidapi-hidraw - USB support in Linux using HIDApi utilizing HIDRaw"
 	@echo "  hidapi-libusb - USB support using HIDApi utilizing LibUSB"
+	@echo ""
+	@echo "Usage: make libserialport; make hidapi; etc."
 
 libserialport: $(SHARED_OBJS) $(ODIR)/voltronic_fcgi_serial.o $(ODIR)/voltronic_dev_serial_libserialport.o
-	$(CC) -o $@ $^ $(CFLAGS) $(SHARED_LIBS) -lserialport
-	$(CP) $@ voltronic_fcgi_libserialport
+	$(CC) -o $@ $^ $(CFLAGS) -lserialport
+	$(CP) $@ libvoltronic_libserialport
 	$(RM) $@
 
 hidapi: $(SHARED_OBJS) $(ODIR)/voltronic_fcgi_usb.o $(ODIR)/voltronic_dev_usb_hidapi.o
-	$(CC) -o $@ $^ $(CFLAGS) $(SHARED_LIBS) -lhidapi
-	$(CP) $@ voltronic_fcgi_hidapi
+	$(CC) -o $@ $^ $(CFLAGS) -lhidapi
+	$(CP) $@ libvoltronic_hidapi
 	$(RM) $@
 
 hidapi-hidraw: $(SHARED_OBJS) $(ODIR)/voltronic_fcgi_usb.o $(ODIR)/voltronic_dev_usb_hidapi.o
-	$(CC) -o $@ $^ $(CFLAGS) $(SHARED_LIBS) -lhidapi-hidraw
-	$(CP) $@ voltronic_fcgi_hidapi_hidraw
+	$(CC) -o $@ $^ $(CFLAGS) -lhidapi-hidraw
+	$(CP) $@ libvoltronic_hidapi_hidraw
 	$(RM) $@
 
 hidapi-libusb: $(SHARED_OBJS) $(ODIR)/voltronic_fcgi_usb.o $(ODIR)/voltronic_dev_usb_hidapi.o
-	$(CC) -o $@ $^ $(CFLAGS) $(SHARED_LIBS) -lhidapi-libusb
-	$(CP) $@ voltronic_fcgi_hidapi_libusb
+	$(CC) -o $@ $^ $(CFLAGS) -lhidapi-libusb
+	$(CP) $@ libvoltronic_hidapi_libusb
 	$(RM) $@
 
 $(ODIR)/%.o: $(SDIR)/%.c $(DEPS)

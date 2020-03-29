@@ -2,16 +2,11 @@
 
 git submodule init
 git submodule update
-cd lib/fcgi2/
+cd lib/libvoltronic
 git checkout master
 git pull
-cd ../hidapi/
-git checkout master
-git pull
-cd ../libserialport/
-git checkout master
-git pull
-cd ../libusb/
+./checkout_dependencies.sh
+cd ../fcgi2/
 git checkout master
 git pull
 cd ../..
