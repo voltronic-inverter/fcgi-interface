@@ -31,22 +31,22 @@ default:
 	@echo "  hidapi-hidraw - USB support in Linux using HIDApi utilizing HIDRaw"
 	@echo "  hidapi-libusb - USB support using HIDApi utilizing LibUSB"
 
-libserialport: $(SHARED_OBJS) $(ODIR)/voltronic_dev_serial_libserialport.o $(ODIR)/voltronic_fcgi_libserialport.o
+libserialport: $(SHARED_OBJS) $(ODIR)/voltronic_fcgi_serial.o $(ODIR)/voltronic_dev_serial_libserialport.o
 	$(CC) -o $@ $^ $(CFLAGS) $(SHARED_LIBS) -lserialport
 	$(CP) $@ voltronic_fcgi_libserialport
 	$(RM) $@
 
-hidapi: $(SHARED_OBJS) $(ODIR)/voltronic_dev_usb_hidapi.o $(ODIR)/voltronic_fcgi_hidapi.o
+hidapi: $(SHARED_OBJS) $(ODIR)/voltronic_fcgi_usb.o $(ODIR)/voltronic_dev_usb_hidapi.o
 	$(CC) -o $@ $^ $(CFLAGS) $(SHARED_LIBS) -lhidapi
 	$(CP) $@ voltronic_fcgi_hidapi
 	$(RM) $@
 
-hidapi-hidraw: $(SHARED_OBJS) $(ODIR)/voltronic_dev_usb_hidapi.o $(ODIR)/voltronic_fcgi_hidapi_hidraw.o
+hidapi-hidraw: $(SHARED_OBJS) $(ODIR)/voltronic_fcgi_usb.o $(ODIR)/voltronic_dev_usb_hidapi.o
 	$(CC) -o $@ $^ $(CFLAGS) $(SHARED_LIBS) -lhidapi-hidraw
 	$(CP) $@ voltronic_fcgi_hidapi_hidraw
 	$(RM) $@
 
-hidapi-libusb: $(SHARED_OBJS) $(ODIR)/voltronic_dev_usb_hidapi.o $(ODIR)/voltronic_fcgi_hidapi_libusb.o
+hidapi-libusb: $(SHARED_OBJS) $(ODIR)/voltronic_fcgi_usb.o $(ODIR)/voltronic_dev_usb_hidapi.o
 	$(CC) -o $@ $^ $(CFLAGS) $(SHARED_LIBS) -lhidapi-libusb
 	$(CP) $@ voltronic_fcgi_hidapi_libusb
 	$(RM) $@
