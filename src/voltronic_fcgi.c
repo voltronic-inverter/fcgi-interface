@@ -81,7 +81,7 @@ static int execute_request(void) {
       "\r\n"
       "%s", errno_str);
 
-    voltronic_dev_write(dev, TIMEOUT_FLUSH_COMMAND, TIMEOUT_FLUSH_COMMAND_LENGTH);
+    voltronic_dev_write(dev, TIMEOUT_FLUSH_COMMAND, TIMEOUT_FLUSH_COMMAND_LENGTH, 500);
 
     return 0;
   }
@@ -113,18 +113,13 @@ static inline void close_dev(void) {
 static int initialize_dev(void) {
   if (dev != 0) {
     return 1;
-  } else if (is_platform_supported()) {
+  } else {
     clear_buffers();
     dev = new_voltronic_dev();
     if (dev != 0) {
       atexit(close_dev);
       return 1;
     }
-  } else {
-    printf("Status: 500 Internal Server Error\r\n"
-      "\r\n"
-      "The CRC calculation is not supported on the current platform, "
-      "please contact the developer of this CGI library to fix it!");
   }
 
   return 0;

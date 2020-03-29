@@ -9,6 +9,7 @@ ODIR = obj
 VDIR = $(LDIR)/libvoltronic
 VLDIR = $(LDIR)/libvoltronic/$(LDIR)
 VSDIR = $(LDIR)/libvoltronic/$(SDIR)
+VODIR = $(VDIR)/$(ODIR)
 
 # define any compile-time flags
 CFLAGS = -std=c99 -Werror -Wall -Wextra -Wpedantic -Wmissing-prototypes -Wshadow -O3 -flto -fomit-frame-pointer
@@ -19,11 +20,8 @@ CFLAGS += -I$(VDIR)/include -I$(LDIR)/fcgi2/include -I$(VLDIR)/libserialport -I$
 # shared libraries
 SHARED_LIBS = -lfcgi
 
-# define the C source files
-SRCS = $(wildcard $(SDIR)/*.c) $(wildcard $(VSDIR)/*.c)
-
 # Object files shared by all directives
-SHARED_OBJS = $(ODIR)/main.o $(ODIR)/voltronic_crc.o $(ODIR)/voltronic_dev.o  $(ODIR)/voltronic_fcgi.o
+SHARED_OBJS = $(VODIR)/voltronic_crc.o $(VODIR)/voltronic_dev.o $(ODIR)/main.o $(ODIR)/voltronic_fcgi.o 
 
 # Directives
 default:
@@ -36,30 +34,33 @@ default:
 	@echo ""
 	@echo "Usage: make libserialport; make hidapi; etc."
 
-libserialport: $(SHARED_OBJS) $(ODIR)/voltronic_fcgi_serial.o $(ODIR)/voltronic_dev_serial_libserialport.o
-	$(CC) -o $@ $^ $(CFLAGS) -lserialport
-	$(CP) $@ libvoltronic_libserialport
+libserialport: $(SHARED_OBJS) $(ODIR)/voltronic_fcgi_serial.o $(VODIR)/voltronic_dev_serial_libserialport.o
+	$(CC) -o $@ $^ $(CFLAGS) $(SHARED_LIBS) -lserialport
+	$(CP) $@ voltronic_fcgi_libserialport
 	$(RM) $@
 
-hidapi: $(SHARED_OBJS) $(ODIR)/voltronic_fcgi_usb.o $(ODIR)/voltronic_dev_usb_hidapi.o
-	$(CC) -o $@ $^ $(CFLAGS) -lhidapi
-	$(CP) $@ libvoltronic_hidapi
+hidapi: $(SHARED_OBJS) $(ODIR)/voltronic_fcgi_usb.o $(VODIR)/voltronic_dev_usb_hidapi.o
+	$(CC) -o $@ $^ $(CFLAGS) $(SHARED_LIBS) -lhidapi
+	$(CP) $@ voltronic_fcgi_hidapi
 	$(RM) $@
 
-hidapi-hidraw: $(SHARED_OBJS) $(ODIR)/voltronic_fcgi_usb.o $(ODIR)/voltronic_dev_usb_hidapi.o
-	$(CC) -o $@ $^ $(CFLAGS) -lhidapi-hidraw
-	$(CP) $@ libvoltronic_hidapi_hidraw
+hidapi-hidraw: $(SHARED_OBJS) $(ODIR)/voltronic_fcgi_usb.o $(VODIR)/voltronic_dev_usb_hidapi.o
+	$(CC) -o $@ $^ $(CFLAGS) $(SHARED_LIBS) -lhidapi-hidraw
+	$(CP) $@ voltronic_fcgi_hidapi_hidraw
 	$(RM) $@
 
-hidapi-libusb: $(SHARED_OBJS) $(ODIR)/voltronic_fcgi_usb.o $(ODIR)/voltronic_dev_usb_hidapi.o
-	$(CC) -o $@ $^ $(CFLAGS) -lhidapi-libusb
-	$(CP) $@ libvoltronic_hidapi_libusb
+hidapi-libusb: $(SHARED_OBJS) $(ODIR)/voltronic_fcgi_usb.o $(VODIR)/voltronic_dev_usb_hidapi.o
+	$(CC) -o $@ $^ $(CFLAGS) $(SHARED_LIBS) -lhidapi-libusb
+	$(CP) $@ voltronic_fcgi_hidapi_libusb
 	$(RM) $@
 
 $(ODIR)/%.o: $(SDIR)/%.c $(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS)
 
+$(VODIR)/%.o: $(VSDIR)/%.c $(DEPS)
+	$(CC) -c -o $@ $< $(CFLAGS)
+
 .PHONY: clean
 
 clean:
-	$(RM) $(ODIR)/*.o *~ core voltronic_fcgi_libserialport voltronic_fcgi_hidapi voltronic_fcgi_hidapi_hidraw voltronic_fcgi_hidapi_libusb $(INCDIR)/*~ 
+	$(RM) $(ODIR)/*.o $(VODIR)/*.o *~ voltronic_fcgi_libserialport voltronic_fcgi_hidapi voltronic_fcgi_hidapi_hidraw voltronic_fcgi_hidapi_libusb $(INCDIR)/*~ 
