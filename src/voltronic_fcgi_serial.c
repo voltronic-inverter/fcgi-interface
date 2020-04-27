@@ -154,3 +154,9 @@ voltronic_dev_t new_voltronic_dev(void) {
 
   return 0;
 }
+
+#if defined(_WIN32) || defined(WIN32)
+  const char* fcgi_port(void) {
+    return ":9001";
+  }
+#endif

@@ -29,6 +29,12 @@ static int fcgi_main(
 }
 
 int main() {
+
+  #if defined(_WIN32) || defined(WIN32)
+    FCGX_Init();
+    FCGX_OpenSocket(fcgi_port(), 500);
+  #endif
+
   int result = 0;
   while (result == 0 && FCGI_Accept() >= 0) {
     const char* request_method = getenv("REQUEST_METHOD");
