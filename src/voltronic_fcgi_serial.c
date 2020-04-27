@@ -5,11 +5,6 @@
 #include "voltronic_dev_serial.h"
 #include "fcgi_stdio.h"
 
-static const char* parse_env(const char* env_name, const char* default_value) {
-  const char* value = getenv(env_name);
-  return value != 0 ? value : default_value;
-}
-
 static const char* parse_serial_port_name(int* parse_result) {
   const char* value = getenv("SERIAL_PORT_NAME");
   if (value != 0) {

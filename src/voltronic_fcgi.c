@@ -2,14 +2,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#include "voltronic_crc.h"
 #include "voltronic_fcgi.h"
 #include "fcgi_stdio.h"
 
 #define DEFAULT_TIMEOUT_MILLISECONDS 2000
-#define TIMEOUT_PARAM_NAME "timeout_milliseconds"
-#define READ_BUFFER_SIZE   1024
-#define WRITE_BUFFER_SIZE  2048
+#define TIMEOUT_PARAM_NAME         "timeout_milliseconds"
+#define WRITE_CRC_ON_EXECUTE_NAME  "write_voltronic_crc"
+#define READ_CRC_ON_EXECUTE_NAME   "voltronic_crc_on_read"
+#define VERIFY_CRC_ON_EXECUTE_NAME "verify_voltronic_crc_on_read"
+#define READ_BUFFER_SIZE   128
+#define WRITE_BUFFER_SIZE  1024
 #define TIMEOUT_FLUSH_COMMAND "\r\r"
 
 static char read_buffer[READ_BUFFER_SIZE + 8];
@@ -118,6 +120,19 @@ static int initialize_dev(void) {
     dev = new_voltronic_dev();
     if (dev != 0) {
       atexit(close_dev);
+
+      if (env_equals("false", WRITE_CRC_ON_EXECUTE_NAME, "true")) {
+        unset_voltronic_dev_opt(dev, VOLTRONIC_WRITE_CRC_ON_EXECUTE);
+      }
+
+      if (env_equals("false", READ_CRC_ON_EXECUTE_NAME, "true")) {
+        unset_voltronic_dev_opt(dev, VOLTRONIC_READ_CRC_ON_EXECUTE);
+      }
+
+      if (env_equals("false", VERIFY_CRC_ON_EXECUTE_NAME, "true")) {
+        unset_voltronic_dev_opt(dev, VOLTRONIC_VERIFY_CRC_ON_EXECUTE);
+      }
+
       return 1;
     }
   }
@@ -162,6 +177,20 @@ static unsigned int fast_parse_int(const char* cstring) {
   }
 
   return 0;
+}
+
+const char* parse_env(const char* env_name, const char* default_value) {
+  const char* value = getenv(env_name);
+  return value != 0 ? value : default_value;
+}
+
+int env_equals(const char* expected_value, const char* env_name, const char* default_value) {
+  const char* value = parse_env(env_name, default_value);
+  if (strcmp(expected_value, value) == 0) {
+    return 1;
+  } else {
+    return 0;
+  }
 }
 
 static inline void clear_buffers(void) {
