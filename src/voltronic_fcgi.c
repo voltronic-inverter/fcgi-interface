@@ -4,6 +4,7 @@
 #include <errno.h>
 #include "voltronic_fcgi.h"
 #include "fcgi_stdio.h"
+#include "version.h"
 
 #define DEFAULT_TIMEOUT_MILLISECONDS 2000
 #define TIMEOUT_PARAM_NAME         "timeout_milliseconds"
@@ -66,6 +67,7 @@ static int execute_request(void) {
     write_buffer[bytes_read] = 0;
 
     printf("Status: 200 OK\r\n"
+      VERSION_HEADER
       "Successful-IO-operations: %d\r\n"
       "\r\n"
       "%s",

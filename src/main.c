@@ -3,6 +3,7 @@
 #include <string.h>
 #include "fcgi_stdio.h"
 #include "voltronic_fcgi.h"
+#include "version.h"
 
 static int fcgi_main(
   const char* request_method,
@@ -15,6 +16,7 @@ static int fcgi_main(
     }
   } else if (strcmp("DELETE", request_method) == 0) {
     printf("Status: 200 OK\r\n"
+      VERSION_HEADER
       "\r\n"
       "Terminating FCGI process");
 
@@ -22,6 +24,7 @@ static int fcgi_main(
   } else {
     printf("Status: 405 Method Not Allowed\r\n"
       "Allow: POST, DELETE\r\n"
+      VERSION_HEADER
       "\r\n");
   }
 
