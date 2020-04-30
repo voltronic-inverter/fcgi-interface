@@ -81,7 +81,7 @@ location /voltronic/usb {
 ```
 
 ### Start fcgi2 process
-You either need to build the binary yourself of [choose a precompiled binary](https://github.com/voltronic-inverter/binaries)
+You either need to [build the binary yourself](https://github.com/voltronic-inverter/binaries/tree/master/build) **OR** [choose a precompiled binary](https://github.com/voltronic-inverter/binaries)
 
 On all operating system **other than Windows**, you need to start a FCGI deamon to run the process:
 ```sh
