@@ -141,13 +141,3 @@ echo 'ATTRS{idVendor}=="0665", ATTRS{idProduct}=="5161", SUBSYSTEMS=="usb", ACTI
 When the device is connected it will present in `/dev/hid.voltronic`.
 
 Note that if multiple devices are to be connected to the same machine, an additional **udev** parameter should be specified such as the device serial number to with different symlink names
-
-### Bluetooth
-Newer generation [Axpert devices](http://voltronicpower.com/en-US/Product/Detail/Axpert-King-3KVA-5KVA) feature Bluetooth
-
-No testing has been completed on these devices but Bluetooth simply operates exactly like RS232 and therefore there is no reason to believe it would be otherwise
-
-### RS485
-Newer generation [Axpert devices](http://voltronicpower.com/en-US/Product/Detail/Axpert-King-3KVA-5KVA) feature RS485 support
-
-No testing has been completed on these devices but there is no reason to believe the underlying protocol has changed at all
