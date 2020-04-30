@@ -16,9 +16,11 @@ All the interfaces share the same underlying communication protocol
 ## Usage
 This library can be used with any fast cgi capable web server
 
-Testing was conducted using nginx.
+Testing was conducted using nginx & lighttpd, this document describes nginx configuration
 
 Steps to use:
+
+**Alternatively you can search for a pre-existing guide for your platform OR install script at [voltronic-inverter/web](https://github.com/voltronic-inverter/web)**
 
 ### Install nginx
 - It is recommened you google this step.  There are a LOT of tutorials available online for every conceivable configuration.
@@ -27,16 +29,26 @@ Steps to use:
 
 **Edit nginx.conf**
 ```conf
+# Feel free to use whatever location suits you
 location /voltronic/serial {
-  fastcgi_pass   127.0.0.1:9000;
-  fastcgi_param  SERIAL_PORT_NAME         "/dev/tty.usbserial";
-  #fastcgi_param  SERIAL_PORT_BAUD_RATE    "2400";  # Optional, default: 2400
-  #fastcgi_param  SERIAL_PORT_DATA_BITS    "8";     # Optional, default: 8
-  #fastcgi_param  SERIAL_PORT_STOP_BITS    "1.5";   # Optional, default: 1
-  #fastcgi_param  SERIAL_PORT_PARITY       "odd";   # Optional, default: none
+  fastcgi_pass   127.0.0.1:9001;
+
+  # Required parameters
   fastcgi_param  REQUEST_METHOD      $request_method;
   fastcgi_param  CONTENT_LENGTH      $content_length;
   fastcgi_param  QUERY_STRING        $query_string;
+
+  # Voltronic device configuration
+  # Remove the # in front of #fastcgi_param to uncomment the line
+  fastcgi_param  SERIAL_PORT_NAME                     "/dev/tty.usbserial";
+
+  #fastcgi_param  SERIAL_PORT_BAUD_RATE               "2400";  # Optional, default: 2400
+  #fastcgi_param  SERIAL_PORT_DATA_BITS               "8";     # Optional, default: 8
+  #fastcgi_param  SERIAL_PORT_STOP_BITS               "1";   # Optional, default: 1
+  #fastcgi_param  SERIAL_PORT_PARITY                  "none";   # Optional, default: none
+  #fastcgi_param  VOLTRONIC_DEVICE_EXPECTS_CRC        "true"; # Optional, default: true
+  #fastcgi_param  VOLTRONIC_DEVICE_RESPONDS_WITH_CRC  "true"; # Optional, default: true
+  #fastcgi_param  VERIFY_VOLTRONIC_RESPONSE_CRC       "true"; # Optional, default: true
 
   add_header Cache-Control no-cache always;
   add_header Content-Type "text/plain; charset=UTF-8" always;
@@ -47,12 +59,21 @@ location /voltronic/serial {
 
 **Edit nginx.conf**
 ```conf
+# Feel free to use whatever location suits you
 location /voltronic/usb {
-  fastcgi_pass   127.0.0.1:9000;
-  #fastcgi_param  USB_SERIAL_NUMBER   "<some serial number here>";  # optional
+  fastcgi_pass   127.0.0.1:9002;
+
+  # Required parameters
   fastcgi_param  REQUEST_METHOD      $request_method;
   fastcgi_param  CONTENT_LENGTH      $content_length;
   fastcgi_param  QUERY_STRING        $query_string;
+
+  # Voltronic device configuration
+  # Remove the # in front of #fastcgi_param to uncomment the line
+  #fastcgi_param  USB_SERIAL_NUMBER                   "<always seems to be empty>";  # optional
+  #fastcgi_param  VOLTRONIC_DEVICE_EXPECTS_CRC        "true"; # Optional, default: true
+  #fastcgi_param  VOLTRONIC_DEVICE_RESPONDS_WITH_CRC  "true"; # Optional, default: true
+  #fastcgi_param  VERIFY_VOLTRONIC_RESPONSE_CRC       "true"; # Optional, default: true
 
   add_header Cache-Control no-cache always;
   add_header Content-Type "text/plain; charset=UTF-8" always;
@@ -60,14 +81,16 @@ location /voltronic/usb {
 ```
 
 ### Start fcgi2 process
-You first need to build the binary of your choice as directed below
+You either need to build the binary yourself of [choose a precompiled binary](https://github.com/voltronic-inverter/binaries)
 
-ie. for serial port, you would run `make serial`
-This produces an executable `voltronic_fcgi_serial`
-
+On all operating system **other than Windows**, you need to start a FCGI deamon to run the process:
 ```sh
-spawn-fcgi -p 9000 -n voltronic_fcgi_serial
+spawn-fcgi -p 9001 -n voltronic_fcgi_serial
+# OR
+spawn-fcgi -p 9002 -n voltronic_fcgi_USB
 ```
+
+On Windows the ports given above are fixed: 9001 for Serial, 9002 for USB
 
 ### Test
 Send a query to your nginx:
@@ -104,40 +127,18 @@ Nothing special to mention here, synchronous protocol with the following configu
 
 ### USB
 The device makes use of an [HID interface](https://en.wikipedia.org/wiki/USB_human_interface_device_class).
-In Linux the device is presented as a [*HIDRaw* device](https://www.kernel.org/doc/Documentation/hid/hidraw.txt)
 
-It is **not** a USB->Serial
-
-So in Linux for example:
-
-**Ruby:**
-```ruby
-fd = File.open('/dev/hidraw0', IO::RDWR|IO::NONBLOCK) # May need root, or make the file 666 using udev rules
-fd.binmode
-fd.sync = true
-fd.write("QPI\xBE\xAC\r") # Will write QPI => Returns 6
-fd.gets("\r") #=> "(PI30\x9A\v\r"
-```
-
-**Python:**
-```python
-import os, sys
-fd = open("/dev/hidraw0", os.O_RDWR|os.O_NONBLOCK)
-os.write(fd, "QPI\xBE\xAC\r")
-os.read(fd, 512)
-```
-
-**Avoiding the need for root**
+**Avoiding the need for root in Linux**
 
 Make use of [**udev**](https://wiki.debian.org/udev) to specify more broad access:
 
 ```bash
 # may require root
 touch /etc/udev﻿/rules.d/15-voltronic.rules
-echo 'ATTRS{idVendor}=="0665", ATTRS{idProduct}=="5161", SUBSYSTEMS=="usb", ACTION=="add", MODE="0666", SYMLINK+="hidVoltronic"' > /etc/udev﻿/rules.d/15-voltronic.rules
+echo 'ATTRS{idVendor}=="0665", ATTRS{idProduct}=="5161", SUBSYSTEMS=="usb", ACTION=="add", MODE="0666", SYMLINK+="hid.voltronic"' > /etc/udev﻿/rules.d/15-voltronic.rules
 ```
 
-When the device is connected it will present in `/dev/hidVoltronic`.
+When the device is connected it will present in `/dev/hid.voltronic`.
 
 Note that if multiple devices are to be connected to the same machine, an additional **udev** parameter should be specified such as the device serial number to with different symlink names
 
@@ -150,123 +151,3 @@ No testing has been completed on these devices but Bluetooth simply operates exa
 Newer generation [Axpert devices](http://voltronicpower.com/en-US/Product/Detail/Axpert-King-3KVA-5KVA) feature RS485 support
 
 No testing has been completed on these devices but there is no reason to believe the underlying protocol has changed at all
-
-## Dependencies
-To remove a lot of the heavy lifting, the library relies:
-- [libserialport](https://sigrok.org/wiki/Libserialport)
-- [HIDAPI](https://github.com/signal11/hidapi)
-- [fgci2](https://github.com/FastCGI-Archives/fcgi2)
-
-## Building
-
-### Dependencies
-
-**Install depedencies:**
-Each operating system will have a different list of prerequisites before the dependencies can be built.
-
-See a more detailed list below 
-
-
-**Build libfcgi:**
-```sh
-cd lib
-./pull_libfcgi2.sh
-cd libfcgi2
-./autogen.sh
-./configure
-make
-make install # Requires sudo or su
-```
-
-**If you intend on using serial port; Build libserialport:**
-```sh
-cd lib
-./pull_libserialport.sh
-cd libserialport
-./autogen.sh
-./configure
-make
-make install # Requires sudo or run as su
-```
-
-**If you intend on using USB; Build libhidapi:**
-```sh
-cd lib
-./pull_libhidapi.sh
-cd libhidapi
-./bootstrap
-./configure
-make
-make install # Requires sudo or su
-```
-
-### FreeBSD
-
-Tested on FreeBSD 10, 11, 12
-
-Required dependencies:
-```sh
-su
-pkg install gcc git autoconf automake libtool libiconv gmake
-```
-
-**gmake** instead of make to build
-
-### Linux
-
-Required dependencies:
-
-**Ubuntu:**
-```sh
-sudo apt-get clean
-sudo apt-get update
-sudo apt-get install gcc git autoconf automake libtool pkg-config libudev-dev libusb-1.0-0-dev
-```
-
-**Amazon Linux:**
-```sh
-sudo yum clean all
-sudo yum install gcc git autoconf automake libtool pkg-config libudev-devel libusb1-devel
-```
-
-**Raspbian:**
-```sh
-sudo apt-get clean
-sudo apt-get update
-sudo apt-get install gcc git autoconf automake libtool pkg-config libudev-dev libusb-1.0-0-dev
-```
-
-**make** to build
-
-### Windows
-
-Built using Ubuntu and miniGW.  Building natively in Windows is a challenge for a better software developer than this author.
-
-**Using Ubuntu:**
-```sh
-sudo apt-get clean
-sudo apt-get update
-sudo apt-get install gcc git autoconf automake libtool pkg-config libudev-dev libusb-1.0-0-dev
-```
-
-### x86
-```sh
-sudo apt-get install gcc-mingw-w64-i686
-```
-
-### x64
-```sh
-sudo apt-get install gcc-mingw-w64-x86-64
-```
-
-### OSX
-
-The library was developed & tested on OSX High Sierra but the system is setup as a dev machine.
-As such the complete list of dependencies have long since been forgotten.
-
-At the very least:
-- Homebrew
-- gcc
-- git
-
-**make** to build
