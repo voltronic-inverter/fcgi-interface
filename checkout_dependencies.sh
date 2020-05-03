@@ -3,7 +3,6 @@
 git submodule init
 git submodule update
 cd lib/libvoltronic
-git checkout master
 git pull
 ./checkout_dependencies.sh
 cd ../fcgi2/
