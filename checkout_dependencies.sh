@@ -6,6 +6,5 @@ cd lib/libvoltronic
 git pull
 ./checkout_dependencies.sh
 cd ../fcgi2/
-git checkout master
 git pull
 cd ../..
