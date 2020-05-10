@@ -31,11 +31,23 @@ static int fcgi_main(
   return 0;
 }
 
-int main() {
+static void setup_fcgi_server(void) {
+  FCGX_Init();
+  FCGX_OpenSocket(fcgi_port(), 500);
+}
 
-  #if defined(_WIN32) || defined(WIN32)
-    FCGX_Init();
-    FCGX_OpenSocket(fcgi_port(), 500);
+int main(int argc, char** argv) {
+
+  #if defined(_WIN32) && defined(WIN32)
+    setup_fcgi_server();
+  #else
+    for(unsigned int index = 0; index < argc; ++index) {
+      const char* arg = argv[index];
+      if ((arg != 0) && (strcmp("--fcgi-server", arg) == 0)) {
+        setup_fcgi_server();
+        break;
+      }
+    }
   #endif
 
   int result = 0;
