@@ -12,6 +12,4 @@
   int env_equals(const char* expected_value, const char* env_name, const char* default_value);
   int voltronic_fcgi(const char* content_length, const char* query_string);
 
-  const char* fcgi_default_port(void);
-
 #endif

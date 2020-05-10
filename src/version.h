@@ -1,4 +1,4 @@
 
-#ifndef VERSION_HEADER
-  #define VERSION_HEADER "Version: 1.0.1\r\n"
+#ifndef VERSION_DESCRIPTION
+  #define VERSION_DESCRIPTION "Version: 1.0.2"
 #endif

@@ -31,15 +31,12 @@ voltronic_dev_t new_voltronic_dev(void) {
     }
 
     printf("Status: 500 Internal Server Error\r\n"
-      "\r\n"
+      VERSION_DESCRIPTION
+      "\r\n\r\n"
       "Could not connect to any USB device with vendor_id=0x0665, "
       "product_id=0x5161%s%s%s%s",
       serial_prefix, serial_number_str, errno_prefix, errno_str);
 
     return 0;
   }
-}
-
-const char* fcgi_default_port(void) {
-  return ":9002";
 }

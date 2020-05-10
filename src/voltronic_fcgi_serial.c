@@ -11,7 +11,8 @@ static const char* parse_serial_port_name(int* parse_result) {
     return value;
   } else {
     printf("Status: 500 Internal Server Error\r\n"
-      "\r\n"
+      VERSION_DESCRIPTION
+      "\r\n\r\n"
       "SERIAL_PORT_NAME fastcgi parameter not specified");
 
     *parse_result = 0;
@@ -36,7 +37,8 @@ static baud_rate_t parse_baud_rate(int* parse_result) {
   }
 
   printf("Status: 500 Internal Server Error\r\n"
-    "\r\n"
+    VERSION_DESCRIPTION
+    "\r\n\r\n"
     "SERIAL_PORT_BAUD_RATE fastcgi parameter specified is invalid");
 
   *parse_result = 0;
@@ -55,7 +57,8 @@ static data_bits_t parse_data_bits(int* parse_result) {
     return DATA_BITS_EIGHT;
   } else {
     printf("Status: 500 Internal Server Error\r\n"
-      "\r\n"
+      VERSION_DESCRIPTION
+      "\r\n\r\n"
       "SERIAL_PORT_DATA_BITS fastcgi parameter specified is invalid");
 
     *parse_result = 0;
@@ -74,7 +77,8 @@ static stop_bits_t parse_stop_bits(int* parse_result) {
     return STOP_BITS_TWO;
   } else {
     printf("Status: 500 Internal Server Error\r\n"
-      "\r\n"
+      VERSION_DESCRIPTION
+      "\r\n\r\n"
       "SERIAL_PORT_STOP_BITS fastcgi parameter specified is invalid");
 
     *parse_result = 0;
@@ -97,7 +101,8 @@ static serial_parity_t parse_parity(int* parse_result) {
     return SERIAL_PARITY_SPACE;
   } else {
     printf("Status: 500 Internal Server Error\r\n"
-      "\r\n"
+      VERSION_DESCRIPTION
+      "\r\n\r\n"
       "SERIAL_PORT_PARITY fastcgi parameter specified is invalid");
 
     *parse_result = 0;
@@ -137,7 +142,8 @@ voltronic_dev_t new_voltronic_dev(void) {
               }
 
               printf("Status: 500 Internal Server Error\r\n"
-                "\r\n"
+                VERSION_DESCRIPTION
+                "\r\n\r\n"
                 "Could not open serial connection to '%s'%s%s",
                 port_name, errno_prefix, errno_str);
             }
@@ -148,8 +154,4 @@ voltronic_dev_t new_voltronic_dev(void) {
   }
 
   return 0;
-}
-
-const char* fcgi_default_port(void) {
-  return ":9001";
 }

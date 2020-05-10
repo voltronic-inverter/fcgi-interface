@@ -48,7 +48,8 @@ int voltronic_fcgi(const char* content_length, const char* query_string) {
     }
   } else {
     printf("Status: 400 Bad Request\r\n"
-      "\r\n");
+      VERSION_DESCRIPTION
+      "\r\n\r\n");
   }
 
   return 1;
@@ -67,8 +68,8 @@ static int execute_request(void) {
     write_buffer[bytes_read] = 0;
 
     printf("Status: 200 OK\r\n"
-      VERSION_HEADER
-      "Successful-IO-operations: %d\r\n"
+      VERSION_DESCRIPTION
+      "\r\nSuccessful-IO-operations: %d\r\n"
       "\r\n"
       "%s",
       ++successful_io_operations,
@@ -82,7 +83,8 @@ static int execute_request(void) {
     }
 
     printf("Status: 503 Service Unavailable\r\n"
-      "\r\n"
+      VERSION_DESCRIPTION
+      "\r\n\r\n"
       "%s", errno_str);
 
     voltronic_dev_write(dev, TIMEOUT_FLUSH_COMMAND, TIMEOUT_FLUSH_COMMAND_LENGTH, 500);
@@ -104,7 +106,8 @@ static int fill_read_buffer(void) {
     }
   } else {
     printf("Status: 413 Payload Too Large\r\n"
-      "\r\n");
+      VERSION_DESCRIPTION
+      "\r\n\r\n");
   }
 
   return 0;
