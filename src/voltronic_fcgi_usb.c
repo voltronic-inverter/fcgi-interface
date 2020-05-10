@@ -4,6 +4,7 @@
 #include "voltronic_fcgi.h"
 #include "voltronic_dev_usb.h"
 #include "fcgi_stdio.h"
+#include "version.h"
 
 voltronic_dev_t new_voltronic_dev(void) {
   const char* serial_number = getenv("USB_SERIAL_NUMBER");

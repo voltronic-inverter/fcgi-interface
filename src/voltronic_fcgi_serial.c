@@ -4,6 +4,7 @@
 #include "voltronic_fcgi.h"
 #include "voltronic_dev_serial.h"
 #include "fcgi_stdio.h"
+#include "version.h"
 
 static const char* parse_serial_port_name(int* parse_result) {
   const char* value = getenv("SERIAL_PORT_NAME");
