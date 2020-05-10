@@ -31,13 +31,9 @@ static int fcgi_main(
   return 0;
 }
 
-static void parse_command_line_arguments(const int argc, const char** argv) {
+static void parse_command_line_arguments(unsigned int argc, char** argv) {
   const char* socket = 0;
   for(unsigned int index = 0; index < argc; ++index) {
-    if (argv == 0) {
-      continue;
-    }
-
     const char* arg = argv[index];
     const size_t arg_length = arg != 0 ? strlen(arg) : 0;
     if (arg_length <= 0) {
@@ -62,7 +58,9 @@ static void parse_command_line_arguments(const int argc, const char** argv) {
 }
 
 int main(int argc, char** argv) {
-  parse_command_line_arguments(argc, argv);
+  if (argc >= 0 && argv != 0) {
+    parse_command_line_arguments(argc, argv);
+  }
 
   int result = FCGI_Accept();
   if (result < 0) {
