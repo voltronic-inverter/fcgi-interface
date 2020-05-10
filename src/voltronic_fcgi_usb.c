@@ -40,8 +40,6 @@ voltronic_dev_t new_voltronic_dev(void) {
   }
 }
 
-#if defined(_WIN32) || defined(WIN32)
-  const char* fcgi_port(void) {
-    return ":9002";
-  }
-#endif
+const char* fcgi_default_port(void) {
+  return ":9002";
+}
