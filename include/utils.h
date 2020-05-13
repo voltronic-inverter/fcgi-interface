@@ -3,25 +3,33 @@
 
   unsigned int parse_uint(const char* cstring);
 
+  int is_cstring_empty(const char* cstring);
+
   int cstring_equals(const char* a, const char* b);
 
   #if defined(_WIN32) || defined(WIN32)
 
-    typedef struct {
-        int errno;
-        DWORD last_error;
-    } errno_t;
+    #include "windows.h"
+
+    typedef DWORD last_error_t;
+    const char* get_error_string(last_error_t value);
+
+    #define SET_LAST_ERROR(_last_error_value_)   SetLastError((_last_error_value_))
+    #define GET_LAST_ERROR()                     GetLastError()
+    #define GET_ERROR_STRING(_last_error_value_) get_error_string((_last_error_value_))
 
   #else
 
-    typedef int errno_t;
+    #include <errno.h>
+    #include <string.h>
+
+    typedef int last_error_t;
+
+    #define SET_LAST_ERROR(_errno__value_)   errno = (_errno__value_)
+    #define GET_LAST_ERROR()                 (errno)
+    #define GET_ERROR_STRING(_errno__value_) strerror((_errno__value_))
 
   #endif
-
-  void reset_last_error(void);
-  int get_last_error(errno_t* error_num);
-  void set_last_error(const errno_t* error_num);
-  const char* get_error_string(const errno_t* error_num);
 
 #endif
 

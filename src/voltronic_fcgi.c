@@ -1,7 +1,5 @@
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
 #include "utils.h"
 #include "fcgi_adapter.h"
 #include "voltronic_fcgi.h"
@@ -29,7 +27,6 @@ static int voltronic_fcgi_execute(
   const char* request_content,
   const unsigned int timeout_milliseconds) {
 
-  reset_last_error();
   const int bytes_read = voltronic_dev_execute(
     dev,
     dev_options,
@@ -49,19 +46,23 @@ static int voltronic_fcgi_execute(
 
     return 1;
   } else {
-    const char* errno_str = "unknown error";
-    errno_t errnum;
-    if (get_last_error(&errnum)) {
-      errno_str = get_error_string(&errnum);
+    const last_error_t last_error = GET_LAST_ERROR();
+    const char* errno_str = "";
+    if (last_error != 0) {
+      errno_str = GET_ERROR_STRING(last_error);
     }
 
     fcgi_printf(
       "Status: 503 Service Unavailable\r\n"
       "\r\n"
-      "%s", errno_str);
+      "%s",
+      errno_str);
 
     voltronic_dev_write(
-      dev, TIMEOUT_FLUSH_COMMAND, TIMEOUT_FLUSH_COMMAND_LENGTH, 500);
+      dev,
+      TIMEOUT_FLUSH_COMMAND,
+      TIMEOUT_FLUSH_COMMAND_LENGTH,
+      500);
 
     return 0;
   }
@@ -73,10 +74,13 @@ int voltronic_fcgi_main(
 
   const char* query_string = fcgi_getenv("QUERY_STRING");
   const unsigned int timeout_milliseconds = parse_timeout(query_string);
-  int result = initialize_dev();
-  if (result != 0) {
-    result = voltronic_fcgi_execute(
-      content_length, request_content, timeout_milliseconds);
+  int result = 1;
+  if (timeout_milliseconds != 0) {
+    result = initialize_dev();
+    if (result != 0) {
+      result = voltronic_fcgi_execute(
+        content_length, request_content, timeout_milliseconds);
+    }
   }
 
   return result;
@@ -140,23 +144,36 @@ static int initialize_dev(void) {
 }
 
 static unsigned int parse_timeout(const char* query_string) {
-  while(1) {
-    if (strncmp(query_string, TIMEOUT_PARAM_NAME, TIMEOUT_PARAM_LENGTH) == 0) {
-      query_string += TIMEOUT_PARAM_LENGTH;
-      if (*query_string == '=') {
-        return parse_uint(query_string + sizeof(char));
-      }
-    }
-
-    query_string -= sizeof(char);
+  if (query_string != 0) {
     while(1) {
-      const char ch = *(query_string += sizeof(char));
-      if (ch == '&') {
-        query_string += sizeof(char);
-        break;
-      } else if (ch == 0) {
-        return DEFAULT_TIMEOUT_MILLISECONDS;
+      if (strncmp(query_string, TIMEOUT_PARAM_NAME, TIMEOUT_PARAM_LENGTH) == 0) {
+        query_string += TIMEOUT_PARAM_LENGTH;
+        if (*query_string == '=') {
+          const unsigned int timeout = parse_uint(query_string + sizeof(char));
+          if (timeout == 0) {
+            fcgi_printf(
+              "Status: 400 Bad Request\r\n"
+              "\r\n"
+              "Invalid %s value specified",
+              TIMEOUT_PARAM_NAME);
+          }
+
+          return timeout;
+        }
+      }
+
+      query_string -= sizeof(char);
+      while(1) {
+        const char ch = *(query_string += sizeof(char));
+        if (ch == '&') {
+          query_string += sizeof(char);
+          break;
+        } else if (ch == 0) {
+          return DEFAULT_TIMEOUT_MILLISECONDS;
+        }
       }
     }
+  } else {
+    return DEFAULT_TIMEOUT_MILLISECONDS;
   }
 }

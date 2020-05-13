@@ -4,39 +4,31 @@
 #include "voltronic_fcgi.h"
 #include "voltronic_dev_usb.h"
 
-voltronic_dev_t new_voltronic_dev(void) {
-  const char* serial_number = fcgi_getenv("USB_SERIAL_NUMBER");
+#define VOLTRONIC_VENDOR_ID  0x0665
+#define VOLTRONIC_DEVICE_ID  0x5161
 
-  reset_last_error();
+voltronic_dev_t new_voltronic_dev(void) {
   const voltronic_dev_t dev = voltronic_usb_create(
-    0x0665,
-    0x5161,
-    serial_number);
+    VOLTRONIC_VENDOR_ID,
+    VOLTRONIC_DEVICE_ID);
 
   if (dev != 0) {
     return dev;
   } else {
-    const char* serial_prefix = "";
-    const char* serial_number_str = "";
-    if (serial_number != 0) {
-      serial_prefix = ", serial_number=";
-      serial_number_str = serial_number;
-    }
-
-    errno_t errnum;
+    const last_error_t last_error = GET_LAST_ERROR();
     const char* errno_prefix = "";
     const char* errno_str = "";
-    if (get_last_error(&errnum)) {
+    if (last_error != 0) {
       errno_prefix = "; ";
-      errno_str = get_error_string(&errno);
+      errno_str = GET_ERROR_STRING(last_error);
     }
 
     fcgi_printf(
       "Status: 500 Internal Server Error\r\n"
       "\r\n"
       "Could not connect to any USB device with vendor_id=0x0665, "
-      "product_id=0x5161%s%s%s%s",
-      serial_prefix, serial_number_str, errno_prefix, errno_str);
+      "product_id=0x5161%s%s",
+      errno_prefix, errno_str);
 
     return 0;
   }

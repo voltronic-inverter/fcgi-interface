@@ -1,4 +1,6 @@
+#include <stdarg.h>
 #include <string.h>
+#include <stdio.h>
 #include "fcgi_adapter.h"
 #include "fcgiapp.h"
 #include "utils.h"
@@ -22,11 +24,17 @@ int fcgi_init(const char *socket_path) {
       }
 
       if (fcgi_socket != -1) {
-        FCGX_Init();
-        if (FCGX_InitRequest(&fcgx_request, fcgi_socket, 0) == 0) {
-          memset(request_content, 0, REQUEST_MAX_LENGTH);
-          return 1;
+        if (FCGX_Init() == 0) {
+          if (FCGX_InitRequest(&fcgx_request, fcgi_socket, FCGI_FAIL_ACCEPT_ON_INTR) == 0) {
+            memset(request_content, 0, REQUEST_MAX_LENGTH);
+            return 1;
+          } else {
+            last_error_t last_error = GET_LAST_ERROR();
+            FCGX_Free(0, fcgi_socket);
+            SET_LAST_ERROR(last_error);
+          }
         }
+        fcgi_socket = -1;
       }
     }
 
@@ -57,7 +65,7 @@ int fcgi_accept(fcgi_handler handler) {
       if (content_length != 0) {
         const unsigned int request_length_uint = parse_uint(content_length);
         if (request_length_uint < REQUEST_MAX_LENGTH) {
-          const int length = FCGX_GetStr(request_content, request_length_uint, fcgx_request.in);
+          const int length = request_length_uint != 0 ? FCGX_GetStr(request_content, request_length_uint, fcgx_request.in) : 0;
           if (length == (int) request_length_uint) {
             request_content[length] = 0;
             result = handler(request_method, request_length_uint, request_content) != 0 ? 1 : 0;

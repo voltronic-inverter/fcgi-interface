@@ -39,16 +39,14 @@ location /voltronic/serial {
   fastcgi_param  QUERY_STRING        $query_string;
 
   # Voltronic device configuration
-  # Remove the # in front of #fastcgi_param to uncomment the line
-  fastcgi_param  SERIAL_PORT_NAME                     "/dev/tty.usbserial";
+  fastcgi_param  SERIAL_PORT_NAME        "/dev/tty.usbserial";
+  fastcgi_param  WRITE_VOLTRONIC_CRC     "true" # false on some InfiniSolar products
+  fastcgi_param  READ_VOLTRONIC_CRC      "true"
 
-  #fastcgi_param  SERIAL_PORT_BAUD_RATE               "2400";  # Optional, default: 2400
-  #fastcgi_param  SERIAL_PORT_DATA_BITS               "8";     # Optional, default: 8
-  #fastcgi_param  SERIAL_PORT_STOP_BITS               "1";   # Optional, default: 1
-  #fastcgi_param  SERIAL_PORT_PARITY                  "none";   # Optional, default: none
-  #fastcgi_param  VOLTRONIC_DEVICE_EXPECTS_CRC        "true"; # Optional, default: true
-  #fastcgi_param  VOLTRONIC_DEVICE_RESPONDS_WITH_CRC  "true"; # Optional, default: true
-  #fastcgi_param  VERIFY_VOLTRONIC_RESPONSE_CRC       "true"; # Optional, default: true
+  fastcgi_param  SERIAL_PORT_BAUD_RATE  "2400";
+  fastcgi_param  SERIAL_PORT_DATA_BITS  "8";
+  fastcgi_param  SERIAL_PORT_STOP_BITS  "1";
+  fastcgi_param  SERIAL_PORT_PARITY     "none";
 
   add_header Cache-Control no-cache always;
   add_header Content-Type "text/plain; charset=UTF-8" always;
@@ -69,11 +67,8 @@ location /voltronic/usb {
   fastcgi_param  QUERY_STRING        $query_string;
 
   # Voltronic device configuration
-  # Remove the # in front of #fastcgi_param to uncomment the line
-  #fastcgi_param  USB_SERIAL_NUMBER                   "<always seems to be empty>";  # optional
-  #fastcgi_param  VOLTRONIC_DEVICE_EXPECTS_CRC        "true"; # Optional, default: true
-  #fastcgi_param  VOLTRONIC_DEVICE_RESPONDS_WITH_CRC  "true"; # Optional, default: true
-  #fastcgi_param  VERIFY_VOLTRONIC_RESPONSE_CRC       "true"; # Optional, default: true
+  fastcgi_param  WRITE_VOLTRONIC_CRC  "true" # false on some InfiniSolar products
+  fastcgi_param  READ_VOLTRONIC_CRC   "true"
 
   add_header Cache-Control no-cache always;
   add_header Content-Type "text/plain; charset=UTF-8" always;
@@ -83,14 +78,33 @@ location /voltronic/usb {
 ### Start fcgi2 process
 You either need to [build the binary yourself](https://github.com/voltronic-inverter/binaries/tree/master/build) **OR** [choose a precompiled binary](https://github.com/voltronic-inverter/binaries)
 
-On all operating system **other than Windows**, you need to start a FCGI deamon to run the process:
+**Using spawn-fcgi**
+
+Not supported on Windows
+
 ```sh
 spawn-fcgi -p 9001 -n voltronic_fcgi_serial
 # OR
-spawn-fcgi -p 9002 -n voltronic_fcgi_USB
+spawn-fcgi -p 9002 -n voltronic_fcgi_usb
 ```
 
-On Windows the ports given above are fixed: 9001 for Serial, 9002 for USB
+**Standalone**
+
+Using a port:
+
+```sh
+voltronic_fcgi_serial --fcgi-socket=:9001
+#OR
+voltronic_fcgi_usb  --fcgi-socket=:9002
+```
+
+Using a socket file descriptor
+
+```sh
+voltronic_fcgi_serial --fcgi-socket=/tmp/mysocket.sock
+#OR
+voltronic_fcgi_usb  --fcgi-socket=/tmp/mysocket.sock
+```
 
 ### Test
 Send a query to your nginx:
