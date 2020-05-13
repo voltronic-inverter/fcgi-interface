@@ -40,7 +40,7 @@ inline int is_cstring_empty(const char* cstring) {
   static void free_last_error_strings(void) {
     if (last_error_strings != 0) {
       for(unsigned int index = 0; index < MAXIMUM_LAST_ERROR_BUFFER; ++index) {
-        const char* cstring = last_error_strings[index];
+        char* cstring = last_error_strings[index];
         if (cstring != 0) {
           free(cstring);
         }
@@ -69,36 +69,32 @@ inline int is_cstring_empty(const char* cstring) {
   }
 
   const char* get_error_string(last_error_t last_error) {
-    LPTSTR message_buffer = nullptr;
+    LPWSTR message_buffer = 0;
 
     const DWORD result = FormatMessageW(
       FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_ALLOCATE_BUFFER,
-      NULL,
+      0,
       (DWORD) last_error,
       MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-      (LPTSTR)&message_buffer,
+      (LPWSTR)&message_buffer,
       0,
-      NULL);
+      0);
 
     if (result > 0) {
-      char* error_cstring = 0;
-
-      #ifdef UNICODE
-        const int length = WideCharToMultiByte(CP_UTF8, 0, message_buffer, -1, NULL, 0, NULL, NULL);
-        error_cstring = malloc((length + 1) * sizeof(char));
-        WideCharToMultiByte(CP_UTF8, 0, message_buffer, -1, error_cstring, length, NULL, NULL);
+      const int length = WideCharToMultiByte(CP_UTF8, 0, message_buffer, -1, 0, 0, 0, 0);
+      if (length > 0) {
+        char* error_cstring = malloc((length + 1) * sizeof(char));
+        WideCharToMultiByte(CP_UTF8, 0, message_buffer, -1, error_cstring, length, 0, 0);
         error_cstring[length] = 0;
-      #else
-        error_cstring = malloc((result + 1) * sizeof(char));
-        memcpy(error_cstring, message_buffer, result);
-        error_cstring[result] = 0;
-      #endif
 
-      LocalFree(message_buffer);
-      store_last_error_buffer(error_cstring);
-    } else {
-      return "";
+        LocalFree(message_buffer);
+        store_last_error_buffer(error_cstring);
+
+        return error_cstring;
+      }
     }
+
+    return "";
   }
 
 #endif
