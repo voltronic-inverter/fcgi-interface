@@ -15,13 +15,13 @@ VODIR = $(VDIR)/$(ODIR)
 CFLAGS = -std=c99 -Werror -Wall -Wextra -Wpedantic -Wmissing-prototypes -Wshadow -O3 -flto -fomit-frame-pointer
 
 # add includes
-CFLAGS += -I$(VDIR)/include -I$(LDIR)/fcgi2/include -I$(VLDIR)/libserialport -I$(VLDIR)/hidapi/hidapi -I$(VLDIR)/libusb/libusb
+CFLAGS += -Iinclude -I$(VDIR)/include -I$(LDIR)/fcgi2/include -I$(VLDIR)/libserialport -I$(VLDIR)/hidapi/hidapi -I$(VLDIR)/libusb/libusb
 
 # shared libraries
 SHARED_LIBS = -lfcgi
 
 # Object files shared by all directives
-SHARED_OBJS = $(VODIR)/voltronic_crc.o $(VODIR)/voltronic_dev.o $(ODIR)/main.o $(ODIR)/voltronic_fcgi.o 
+SHARED_OBJS = $(VODIR)/voltronic_crc.o $(VODIR)/voltronic_dev.o $(ODIR)/utils.o $(ODIR)/main.o $(ODIR)/fcgi_adapter.o $(ODIR)/voltronic_fcgi.o
 
 # Directives
 default:

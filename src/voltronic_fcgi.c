@@ -2,124 +2,61 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include "utils.h"
+#include "fcgi_adapter.h"
 #include "voltronic_fcgi.h"
-#include "version.h"
+#include "voltronic_dev.h"
 
-#define DEFAULT_TIMEOUT_MILLISECONDS  2000
-#define TIMEOUT_PARAM_NAME            "timeout_milliseconds"
-#define WRITE_CRC_ON_EXECUTE_NAME     "VOLTRONIC_DEVICE_EXPECTS_CRC"
-#define READ_CRC_ON_EXECUTE_NAME      "VOLTRONIC_DEVICE_RESPONDS_WITH_CRC"
-#define VERIFY_CRC_ON_EXECUTE_NAME    "VERIFY_VOLTRONIC_RESPONSE_CRC"
-#define READ_BUFFER_SIZE              127
-#define WRITE_BUFFER_SIZE             1023
-#define TIMEOUT_FLUSH_COMMAND         "\r\r"
+#define DEFAULT_TIMEOUT_MILLISECONDS     2000
+#define TIMEOUT_PARAM_NAME               "timeout_milliseconds"
+#define WRITE_CRC_PARAM_NAME             "WRITE_VOLTRONIC_CRC"
+#define READ_CRC_PARAM_NAME              "READ_VOLTRONIC_CRC"
+#define WRITE_BUFFER_SIZE                1024
+#define TIMEOUT_FLUSH_COMMAND            "\r\r"
 
-static char read_buffer[READ_BUFFER_SIZE + 1];
-static char write_buffer[WRITE_BUFFER_SIZE + 1];
-
+static char write_buffer[WRITE_BUFFER_SIZE];
+static int dev_options = 0;
 static voltronic_dev_t dev = 0;
-static unsigned int dev_options = 0;
 
-static size_t request_length = 0;
-static unsigned int timeout_milliseconds = 0;
-static unsigned int successful_io_operations = 0;
-
-static unsigned int fast_parse_int(const char* cstring);
+static int initialize_dev(void);
 static unsigned int parse_timeout(const char* query_string);
-static void clear_buffers(void);
-static int initialize_dev(FCGX_Request* request);
-static int fill_read_buffer(FCGX_Request* request);
-static int execute_request(FCGX_Request* request);
 
 #define TIMEOUT_PARAM_LENGTH (sizeof(TIMEOUT_PARAM_NAME) - 1)
 #define TIMEOUT_FLUSH_COMMAND_LENGTH (sizeof(TIMEOUT_FLUSH_COMMAND) - 1)
 
-static int voltronic_fcgi(
-  FCGX_Request* request,
+static int voltronic_fcgi_execute(
   const unsigned int content_length,
-  const char* query_string) {
+  const char* request_content,
+  const unsigned int timeout_milliseconds) {
 
-  timeout_milliseconds = parse_timeout(query_string);
-  if (content_length > 0 && timeout_milliseconds > 0) {
-    if (initialize_dev(request)) {
-      if (fill_read_buffer(request)) {
-        return execute_request(request);
-      }
-    } else {
-      return 0;
-    }
-  } else {
-    FCGX_FPrintF(request->out,
-      "Status: 400 Bad Request\r\n"
-      VERSION_DESCRIPTION "\r\n"
-      "\r\n");
-  }
-
-  return 1;
-}
-
-int handle_fcgi_request(FCGX_Request* request) {
-  const char* request_method = parse_env(request, "REQUEST_METHOD", 0);
-  const char* content_length = parse_env(request, "CONTENT_LENGTH", 0);
-  const char* query_string = parse_env(request, "QUERY_STRING", "");
-
-  if (request_method != 0 && content_length != 0) {
-    if (strcmp("POST", request_method) == 0) {
-      if (!voltronic_fcgi(request, fast_parse_int(content_length), query_string)) {
-        return 1;
-      }
-    } else if (strcmp("DELETE", request_method) == 0) {
-      FCGX_FPrintF(request->out,
-        "Status: 200 OK\r\n"
-        VERSION_DESCRIPTION "\r\n"
-        "\r\n"
-        "Terminating FCGI process");
-
-      return 1;
-    } else {
-      FCGX_FPrintF(request->out,
-        "Status: 405 Method Not Allowed\r\n"
-        "Allow: POST, DELETE\r\n"
-        VERSION_DESCRIPTION "\r\n"
-        "\r\n");
-    }
-  }
-
-  return 0;
-}
-
-static int execute_request(FCGX_Request* request) {
+  reset_last_error();
   const int bytes_read = voltronic_dev_execute(
     dev,
     dev_options,
-    read_buffer,
-    request_length,
+    request_content,
+    content_length,
     write_buffer,
     WRITE_BUFFER_SIZE,
     timeout_milliseconds);
 
   if (bytes_read > 0) {
-    write_buffer[bytes_read] = 0;
-
-    FCGX_FPrintF(request->out,
+    fcgi_printf(
       "Status: 200 OK\r\n"
-      VERSION_DESCRIPTION "\r\n"
-      "Successful-IO-operations: %d\r\n"
       "\r\n"
-      "%s",
-      ++successful_io_operations,
+      "%.*s",
+      bytes_read,
       write_buffer);
 
     return 1;
   } else {
-    const char* errno_str = "";
-    if (errno > 0) {
-      errno_str = strerror(errno);
+    const char* errno_str = "unknown error";
+    errno_t errnum;
+    if (get_last_error(&errnum)) {
+      errno_str = get_error_string(&errnum);
     }
 
-    FCGX_FPrintF(request->out,
+    fcgi_printf(
       "Status: 503 Service Unavailable\r\n"
-      VERSION_DESCRIPTION "\r\n"
       "\r\n"
       "%s", errno_str);
 
@@ -130,56 +67,76 @@ static int execute_request(FCGX_Request* request) {
   }
 }
 
-static int fill_read_buffer(FCGX_Request* request) {
-  if (request_length < READ_BUFFER_SIZE) {
-    const size_t bytes_read = FCGX_GetStr(
-      read_buffer,
-      request_length,
-      request->in);
+int voltronic_fcgi_main(
+  const unsigned int content_length,
+  const char* request_content) {
 
-    if (bytes_read >= request_length) {
-      return 1;
-    }
-  } else {
-    FCGX_FPrintF(request->out,
-      "Status: 413 Payload Too Large\r\n"
-      VERSION_DESCRIPTION "\r\n"
-      "\r\n");
+  const char* query_string = fcgi_getenv("QUERY_STRING");
+  const unsigned int timeout_milliseconds = parse_timeout(query_string);
+  int result = initialize_dev();
+  if (result != 0) {
+    result = voltronic_fcgi_execute(
+      content_length, request_content, timeout_milliseconds);
   }
 
-  return 0;
+  return result;
 }
 
 static inline void close_dev(void) {
   voltronic_dev_close(dev);
 }
 
-static int initialize_dev(FCGX_Request* request) {
+static inline int is_true(const char* fcgi_env_name) {
+  return cstring_equals("true", fcgi_getenv(fcgi_env_name));
+}
+
+static inline int is_false(const char* fcgi_env_name) {
+  return cstring_equals("false", fcgi_getenv(fcgi_env_name));
+}
+
+static int parse_voltronic_options(void) {
+  const char* bad_param_name = 0;
+  if (is_true(WRITE_CRC_PARAM_NAME)) {
+    dev_options &= ~DISABLE_WRITE_VOLTRONIC_CRC;
+  } else if (is_false(WRITE_CRC_PARAM_NAME)) {
+    dev_options |= DISABLE_WRITE_VOLTRONIC_CRC;
+  } else {
+    bad_param_name = WRITE_CRC_PARAM_NAME;
+  }
+
+  if (is_true(READ_CRC_PARAM_NAME)) {
+    dev_options &= ~DISABLE_PARSE_VOLTRONIC_CRC;
+  } else if (is_false(READ_CRC_PARAM_NAME)) {
+    dev_options |= DISABLE_PARSE_VOLTRONIC_CRC;
+  } else {
+    bad_param_name = READ_CRC_PARAM_NAME;
+  }
+
+  if (bad_param_name == 0) {
+    return 1;
+  } else {
+    fcgi_printf(
+      "Status: 500 Internal Server Error\r\n"
+      "\r\n"
+      "FastCGI parameter %s is not set; Expecting \"true\" or \"false\"",
+      bad_param_name);
+
+    return 0;
+  }
+}
+
+static int initialize_dev(void) {
   if (dev != 0) {
     return 1;
   } else {
-    clear_buffers();
-    dev = new_voltronic_dev(request);
+    dev = new_voltronic_dev();
     if (dev != 0) {
       atexit(close_dev);
-
-      if (env_equals(request, "false", WRITE_CRC_ON_EXECUTE_NAME, "true")) {
-        dev_options |= DISABLE_WRITE_VOLTRONIC_CRC;
-      }
-
-      if (env_equals(request, "false", READ_CRC_ON_EXECUTE_NAME, "true")) {
-        dev_options |= DISABLE_PARSE_VOLTRONIC_CRC;
-      }
-
-      if (env_equals(request, "false", VERIFY_CRC_ON_EXECUTE_NAME, "true")) {
-        dev_options |= DISABLE_VERIFY_VOLTRONIC_CRC;
-      }
-
-      return 1;
+      return parse_voltronic_options();
+    } else {
+      return 0;
     }
   }
-
-  return 0;
 }
 
 static unsigned int parse_timeout(const char* query_string) {
@@ -187,7 +144,7 @@ static unsigned int parse_timeout(const char* query_string) {
     if (strncmp(query_string, TIMEOUT_PARAM_NAME, TIMEOUT_PARAM_LENGTH) == 0) {
       query_string += TIMEOUT_PARAM_LENGTH;
       if (*query_string == '=') {
-        return fast_parse_int(query_string + sizeof(char));
+        return parse_uint(query_string + sizeof(char));
       }
     }
 
@@ -202,49 +159,4 @@ static unsigned int parse_timeout(const char* query_string) {
       }
     }
   }
-}
-
-static unsigned int fast_parse_int(const char* cstring) {
-  unsigned int value = 0;
-  for(unsigned int count = 0; count < 8; ++count) {
-    const char ch = *cstring;
-
-    if (ch >= '0' && ch <= '9') {
-      value = (value * 10) + (ch - '0');
-    } else {
-      return value;
-    }
-
-    cstring += sizeof(char);
-  }
-
-  return 0;
-}
-
-const char* parse_env(
-  FCGX_Request* request,
-  const char* env_name,
-  const char* default_value) {
-
-  const char* value = FCGX_GetParam(env_name, request->envp);
-  return value != 0 ? value : default_value;
-}
-
-int env_equals(
-  FCGX_Request* request,
-  const char* expected_value,
-  const char* env_name,
-  const char* default_value) {
-
-  const char* value = parse_env(request, env_name, default_value);
-  if (strcmp(expected_value, value) == 0) {
-    return 1;
-  } else {
-    return 0;
-  }
-}
-
-static inline void clear_buffers(void) {
-  memset(read_buffer, 0, READ_BUFFER_SIZE + 1);
-  memset(write_buffer, 0, WRITE_BUFFER_SIZE + 1);
 }

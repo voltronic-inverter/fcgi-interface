@@ -1,68 +1,65 @@
-#include <stdlib.h>
-#include <string.h>
 #include <errno.h>
+#include "utils.h"
+#include "fcgi_adapter.h"
 #include "voltronic_fcgi.h"
 #include "voltronic_dev_serial.h"
-#include "version.h"
 
-static const char* parse_serial_port_name(FCGX_Request* request, int* parse_result) {
-  const char* value = parse_env(request, "SERIAL_PORT_NAME", 0);
+static const char* parse_serial_port_name(int* parse_result) {
+  const char* value = fcgi_getenv("SERIAL_PORT_NAME");
   if (value != 0) {
     return value;
   } else {
-    FCGX_FPrintF(request->out,
+    fcgi_printf(
       "Status: 500 Internal Server Error\r\n"
-      VERSION_DESCRIPTION "\r\n"
       "\r\n"
-      "SERIAL_PORT_NAME fastcgi parameter not specified");
+      "FastCGI parameter SERIAL_PORT_NAME is not set; Expecting COM port (Windows) or /dev/ or similar path (Posix)");
 
     *parse_result = 0;
     return "";
   }
 }
 
-static baud_rate_t parse_baud_rate(FCGX_Request* request, int* parse_result) {
-  const char* cstring = parse_env(request, "SERIAL_PORT_BAUD_RATE", "2400");
-
-  unsigned int value = 0;
-  for(unsigned int count = 0; count < 8; ++count) {
-    const char ch = *cstring;
-
-    if (ch >= '0' && ch <= '9') {
-      value = (value * 10) + (ch - '0');
-    } else {
-      return (baud_rate_t) value;
-    }
-
-    cstring += sizeof(char);
+static baud_rate_t parse_baud_rate(int* parse_result) {
+  const char* baud_rate_cstring = fcgi_getenv("SERIAL_PORT_BAUD_RATE");
+  if (baud_rate_cstring == 0) {
+    return 2400;
   }
 
-  FCGX_FPrintF(request->out,
-    "Status: 500 Internal Server Error\r\n"
-    VERSION_DESCRIPTION "\r\n"
-    "\r\n"
-    "SERIAL_PORT_BAUD_RATE fastcgi parameter specified is invalid");
+  const unsigned int baud_rate = parse_uint(baud_rate_cstring);
+  if (baud_rate != 0) {
+    return (baud_rate_t) baud_rate;
+  } else {
+    fcgi_printf(
+      "Status: 500 Internal Server Error\r\n"
+      "\r\n"
+      "FastCGI parameter SERIAL_PORT_BAUD_RATE=\"%s\" is invalid; Expecting a positive Integer",
+      baud_rate);
 
-  *parse_result = 0;
-  return 0;
+    *parse_result = 0;
+    return 0;
+  }
 }
 
-static data_bits_t parse_data_bits(FCGX_Request* request, int* parse_result) {
-  const char* value = parse_env(request, "SERIAL_PORT_DATA_BITS", "8");
-  if (strcmp("5", value) == 0) {
+static data_bits_t parse_data_bits(int* parse_result) {
+  const char* data_bits = fcgi_getenv("SERIAL_PORT_DATA_BITS");
+  if (data_bits == 0) {
+    return DATA_BITS_EIGHT;
+  }
+
+  if (cstring_equals("5", data_bits)) {
     return DATA_BITS_FIVE;
-  } else if (strcmp("6", value) == 0) {
+  } else if (cstring_equals("6", data_bits)) {
     return DATA_BITS_SIX;
-  } else if (strcmp("7", value) == 0) {
+  } else if (cstring_equals("7", data_bits)) {
     return DATA_BITS_SEVEN;
-  } else if (strcmp("8", value) == 0) {
+  } else if (cstring_equals("8", data_bits)) {
     return DATA_BITS_EIGHT;
   } else {
-    FCGX_FPrintF(request->out,
+    fcgi_printf(
       "Status: 500 Internal Server Error\r\n"
-      VERSION_DESCRIPTION "\r\n"
       "\r\n"
-      "SERIAL_PORT_DATA_BITS fastcgi parameter specified is invalid");
+      "FastCGI parameter SERIAL_PORT_DATA_BITS=\"%s\" is invalid; Expecting a value from the set [5, 6, 7, 8]",
+      data_bits);
 
     *parse_result = 0;
 
@@ -70,20 +67,24 @@ static data_bits_t parse_data_bits(FCGX_Request* request, int* parse_result) {
   }
 }
 
-static stop_bits_t parse_stop_bits(FCGX_Request* request, int* parse_result) {
-  const char* value = parse_env(request, "SERIAL_PORT_STOP_BITS", "1");
-  if (strcmp("1", value) == 0) {
+static stop_bits_t parse_stop_bits(int* parse_result) {
+  const char* stop_bits = fcgi_getenv("SERIAL_PORT_STOP_BITS");
+  if (stop_bits == 0) {
     return STOP_BITS_ONE;
-  } else if (strcmp("1.5", value) == 0) {
+  }
+
+  if (cstring_equals("1", stop_bits)) {
+    return STOP_BITS_ONE;
+  } else if (cstring_equals("1.5", stop_bits)) {
     return STOP_BITS_ONE_AND_ONE_HALF;
-  } else if (strcmp("2", value) == 0) {
+  } else if (cstring_equals("2", stop_bits)) {
     return STOP_BITS_TWO;
   } else {
-    FCGX_FPrintF(request->out,
+    fcgi_printf(
       "Status: 500 Internal Server Error\r\n"
-      VERSION_DESCRIPTION "\r\n"
       "\r\n"
-      "SERIAL_PORT_STOP_BITS fastcgi parameter specified is invalid");
+      "FastCGI parameter SERIAL_PORT_STOP_BITS=\"%s\" is invalid; Expecting a value from the set [1, 1.5, 2]",
+      stop_bits);
 
     *parse_result = 0;
 
@@ -91,24 +92,28 @@ static stop_bits_t parse_stop_bits(FCGX_Request* request, int* parse_result) {
   }
 }
 
-static serial_parity_t parse_parity(FCGX_Request* request, int* parse_result) {
-  const char* value = parse_env(request, "SERIAL_PORT_PARITY", "none");
-  if (strcmp("none", value) == 0) {
+static serial_parity_t parse_parity(int* parse_result) {
+  const char* parity = fcgi_getenv("SERIAL_PORT_PARITY");
+  if (parity == 0) {
     return SERIAL_PARITY_NONE;
-  } else if (strcmp("odd", value) == 0) {
+  }
+
+  if (cstring_equals("none", parity)) {
+    return SERIAL_PARITY_NONE;
+  } else if (cstring_equals("odd", parity)) {
     return SERIAL_PARITY_ODD;
-  } else if (strcmp("even", value) == 0) {
+  } else if (cstring_equals("even", parity)) {
     return SERIAL_PARITY_EVEN;
-  } else if (strcmp("mark", value) == 0) {
+  } else if (cstring_equals("mark", parity)) {
     return SERIAL_PARITY_MARK;
-  } else if (strcmp("space", value) == 0) {
+  } else if (cstring_equals("space", parity)) {
     return SERIAL_PARITY_SPACE;
   } else {
-    FCGX_FPrintF(request->out,
+    fcgi_printf(
       "Status: 500 Internal Server Error\r\n"
-      VERSION_DESCRIPTION "\r\n"
       "\r\n"
-      "SERIAL_PORT_PARITY fastcgi parameter specified is invalid");
+      "FastCGI parameter SERIAL_PORT_STOP_BITS=\"%s\" is invalid; Expecting a value from the set [none, even, odd, mark, space]",
+      parity);
 
     *parse_result = 0;
 
@@ -116,19 +121,20 @@ static serial_parity_t parse_parity(FCGX_Request* request, int* parse_result) {
   }
 }
 
-voltronic_dev_t new_voltronic_dev(FCGX_Request* request) {
+voltronic_dev_t new_voltronic_dev(void) {
   int parse_result = 1;
 
-  const char* port_name = parse_serial_port_name(request, &parse_result);
+  const char* port_name = parse_serial_port_name(&parse_result);
   if (parse_result) {
-    const baud_rate_t baud_rate = parse_baud_rate(request, &parse_result);
+    const baud_rate_t baud_rate = parse_baud_rate(&parse_result);
     if (parse_result) {
-      const data_bits_t data_bits = parse_data_bits(request, &parse_result);
+      const data_bits_t data_bits = parse_data_bits(&parse_result);
       if (parse_result) {
-        const stop_bits_t stop_bits = parse_stop_bits(request, &parse_result);
+        const stop_bits_t stop_bits = parse_stop_bits(&parse_result);
         if (parse_result) {
-          const serial_parity_t parity = parse_parity(request, &parse_result);
+          const serial_parity_t parity = parse_parity(&parse_result);
           if (parse_result) {
+            reset_last_error();
             const voltronic_dev_t dev = voltronic_serial_create(
               port_name,
               baud_rate,
@@ -141,14 +147,14 @@ voltronic_dev_t new_voltronic_dev(FCGX_Request* request) {
             } else {
               const char* errno_prefix = "";
               const char* errno_str = "";
-              if (errno > 0) {
+              errno_t errnum;
+              if (get_last_error(&errnum)) {
                 errno_prefix = "; ";
-                errno_str = strerror(errno);
+                errno_str = get_error_string(&errnum);
               }
 
-              FCGX_FPrintF(request->out,
+              fcgi_printf(
                 "Status: 500 Internal Server Error\r\n"
-                VERSION_DESCRIPTION "\r\n"
                 "\r\n"
                 "Could not open serial connection to '%s'%s%s",
                 port_name, errno_prefix, errno_str);

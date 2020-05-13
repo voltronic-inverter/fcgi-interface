@@ -1,13 +1,13 @@
-#include <stdlib.h>
-#include <string.h>
 #include <errno.h>
+#include "utils.h"
+#include "fcgi_adapter.h"
 #include "voltronic_fcgi.h"
 #include "voltronic_dev_usb.h"
-#include "version.h"
 
-voltronic_dev_t new_voltronic_dev(FCGX_Request* request) {
-  const char* serial_number = parse_env(request, "USB_SERIAL_NUMBER", 0);
+voltronic_dev_t new_voltronic_dev(void) {
+  const char* serial_number = fcgi_getenv("USB_SERIAL_NUMBER");
 
+  reset_last_error();
   const voltronic_dev_t dev = voltronic_usb_create(
     0x0665,
     0x5161,
@@ -23,16 +23,16 @@ voltronic_dev_t new_voltronic_dev(FCGX_Request* request) {
       serial_number_str = serial_number;
     }
 
+    errno_t errnum;
     const char* errno_prefix = "";
     const char* errno_str = "";
-    if (errno > 0) {
+    if (get_last_error(&errnum)) {
       errno_prefix = "; ";
-      errno_str = strerror(errno);
+      errno_str = get_error_string(&errno);
     }
 
-    FCGX_FPrintF(request->out,
+    fcgi_printf(
       "Status: 500 Internal Server Error\r\n"
-      VERSION_DESCRIPTION "\r\n"
       "\r\n"
       "Could not connect to any USB device with vendor_id=0x0665, "
       "product_id=0x5161%s%s%s%s",
