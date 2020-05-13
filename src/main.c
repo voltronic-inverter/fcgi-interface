@@ -1,95 +1,101 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "fcgi_stdio.h"
+#include <errno.h>
+#include "fcgiapp.h"
 #include "voltronic_fcgi.h"
 #include "version.h"
 
-static int fcgi_main(
-  const char* request_method,
-  const char* content_length,
-  const char* query_string) {
+#if defined(_WIN32) || defined(WIN32)
+  #define NEWLINE "\r\n"
+#else
+  #define NEWLINE "\n"
+#endif
 
-  if (strcmp("POST", request_method) == 0) {
-    if (!voltronic_fcgi(content_length, query_string)) {
-      return 1;
+#define TAB "  "
+
+static void print_commandline_options(void);
+static void parse_command_line_arguments(
+  const unsigned int argc, char** argv);
+
+static int fcgi_sock = 0;
+
+static void fcgi_main(FCGX_Request* request) {
+  int result = 0;
+  do {
+    result = FCGX_Accept_r(request);
+
+    if (result == 0) {
+      result = handle_fcgi_request(request);
     }
-  } else if (strcmp("DELETE", request_method) == 0) {
-    printf("Status: 200 OK\r\n"
-      VERSION_DESCRIPTION
-      "\r\n\r\n"
-      "Terminating FCGI process");
 
-    return 1;
-  } else {
-    printf("Status: 405 Method Not Allowed\r\n"
-      "Allow: POST, DELETE\r\n"
-      VERSION_DESCRIPTION
-      "\r\n\r\n");
-  }
+    FCGX_Finish_r(request);
+  } while(result == 0);
 
-  return 0;
+  FCGX_ShutdownPending();
 }
 
-static void parse_command_line_arguments(unsigned int argc, char** argv) {
+int main(int argc, char** argv) {
+  FCGX_Init();
+
+  if (argc >= 0 && argv != 0) {
+    parse_command_line_arguments(argc, argv);
+  }
+
+  FCGX_Request request;
+  if (FCGX_InitRequest(&request, fcgi_sock, 0) != 0) {
+    fprintf(stderr, "Could not initialize FCGI" NEWLINE);
+    exit(1);
+  }
+
+  fcgi_main(&request);
+
+  FCGX_Free(&request, fcgi_sock);
+  FCGX_Finish();
+}
+
+static void parse_command_line_arguments(const unsigned int argc, char** argv) {
   const char* socket = 0;
-  for(unsigned int index = 0; index < argc; ++index) {
+  for(unsigned int index = 1; index < argc; ++index) {
     const char* arg = argv[index];
     const size_t arg_length = arg != 0 ? strlen(arg) : 0;
     if (arg_length <= 0) {
       continue;
     }
 
-    if (strcmp("--version", arg) == 0) {
-      fprintf(stdout, VERSION_DESCRIPTION "\n");
+    if (strcmp("--help", arg) == 0) {
+      print_commandline_options();
       exit(0);
-    } else if ((arg_length > 19) && (strncmp("--fcgi-open-socket=", arg, 19) == 0)) {
-      socket = arg + (sizeof(char) * 19);
     }
+
+    if (strcmp("--version", arg) == 0) {
+      printf(VERSION_DESCRIPTION NEWLINE);
+      exit(0);
+    }
+
+    if (strncmp("--open-fcgi-socket=", arg, 19) == 0) {
+      socket = arg + (sizeof(char) * 19);
+      continue;
+    }
+
+    fprintf(stderr, "Invalid command-line argument '%s'" NEWLINE, arg);
+    fprintf(stderr, "--help for a list of permitted command-line options" NEWLINE);
+    exit(1);
   }
 
   if (socket != 0) {
-    const size_t length = strlen(socket);
-    if (length > 0) {
-      FCGX_Init();
-      FCGX_OpenSocket(socket, 10);
+    if ((fcgi_sock = FCGX_OpenSocket(socket, 10)) == -1) {
+      fprintf(stderr, "Could not open '%s'; %s" NEWLINE, socket, strerror(errno));
+      exit(1);
     }
   }
 }
 
-int main(int argc, char** argv) {
-  if (argc >= 0 && argv != 0) {
-    parse_command_line_arguments(argc, argv);
-  }
-
-  int result = FCGI_Accept();
-  if (result < 0) {
-    fprintf(stderr, "FCGI_Accept() failed\n");
-    fprintf(stderr, "Did you start the process with spawn_fcgi (recommended apprach)\n");
-    fprintf(stderr, "You can start the process as standalone instead (see below).\n\n");
-    fprintf(stderr, "Commandline options:\n");
-    fprintf(stderr, "  --version                        print version and terminate\n\n");
-    fprintf(stderr, "  --fcgi-open-socket=<socket>      start as a standalone process\n");
-    fprintf(stderr, "    <socket> is the Unix domain socket (named pipe in Windows), or a colon followed by a port number.\n");
-    fprintf(stderr, "    e.g. \"--fcgi-open-socket=/tmp/fastcgi/mysocket\", \"--fcgi-open-socket=:5000\"\n");
-    exit(1);
-  }
-
-  result = 0;
-  do {
-    const char* request_method = getenv("REQUEST_METHOD");
-    const char* content_length = getenv("CONTENT_LENGTH");
-    const char* query_string = getenv("QUERY_STRING");
-
-    if (request_method != 0 && content_length != 0) {
-      result = fcgi_main(
-        request_method,
-        content_length,
-        query_string != 0 ? query_string : "");
-    }
-  } while(result == 0 && FCGI_Accept() >= 0);
-
-  FCGI_Finish();
-
-  return 0;
+static void print_commandline_options(void) {
+  printf("Commandline options:" NEWLINE NEWLINE);
+  printf(TAB "--help                           print this screen and terminate" NEWLINE);
+  printf(TAB "--version                        print version and terminate" NEWLINE);
+  printf(TAB "--open-fcgi-socket=<socket>      start as a standalone process" NEWLINE);
+  printf(TAB TAB "<socket> is the Unix domain socket (named pipe in Windows), or a colon followed by a port number." NEWLINE);
+  printf(TAB TAB "e.g. \"--open-fcgi-socket=/tmp/fastcgi/mysocket\", \"--open-fcgi-socket=:5000\"" NEWLINE);
 }
