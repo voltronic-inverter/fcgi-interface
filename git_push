@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+
+ls 'include/version.h' 1>/dev/null 2>/dev/null
+if [[ $? -ne 0 ]]; then
+  echo "Could not find 'include/version.h'; Are you in the correct directory?"
+  exit 1
+fi
+
+git status 2>/dev/null | grep 'Your branch is ahead of' 1>/dev/null 2>/dev/null
+if [[ $? -ne 0 ]]; then
+  echo "Nothing is committed locally yet"
+  exit 1
+fi
+
+MAJOR_VERSION=`cat 'include/version.h' | grep 'VOLTRONIC_FCGI_VERSION' | grep -v '#ifndef' | cut -d '"' -f 2 | cut -d '.' -f 1`
+MINOR_VERSION=`cat 'include/version.h' | grep 'VOLTRONIC_FCGI_VERSION' | grep -v '#ifndef' | cut -d '"' -f 2 | cut -d '.' -f 2`
+BUILD_VERSION=`cat 'include/version.h' | grep 'VOLTRONIC_FCGI_VERSION' | grep -v '#ifndef' | cut -d '"' -f 2 | cut -d '.' -f 3`
+
+BUILD_VERSION=$(( $BUILD_VERSION + 1 ))
+
+VERSION="${MAJOR_VERSION}.${MINOR_VERSION}.${BUILD_VERSION}"
+
+echo -e "\n#ifndef VOLTRONIC_FCGI_VERSION\n  #define VOLTRONIC_FCGI_VERSION \"${VERSION}\"\n#endif\n" > 'include/version.h'
+
+git add include/version.h
+git commit --amend --no-edit
+git push
